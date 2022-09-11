@@ -138,8 +138,6 @@ pub fn jq(value: &Value, query_str: &str) -> Result<Option<Vec<Value>>, JQError>
         println!("No blocks");
         return Ok(None);
     }
-    println!("jq: {:?}", &blocks);
-
     query(value, blocks)
 }
 
@@ -188,6 +186,7 @@ mod tests {
 
         let query_str = ".";
         let result = jq(&input, query_str).expect("Failed JQ");
+        dbg!(&result);
         assert_eq!(&result, &Some(vec![input]));
     }
 

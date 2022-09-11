@@ -2,6 +2,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum JQError {
+    #[error("Error: {0}")]
+    GeneralError(String),
+    #[error("IO error")]
+    IOError(#[from] std::io::Error),
+    #[error("JSON parsing error ")]
+    JSONError(#[from] serde_json::Error),
     #[error("Parse error")]
     ParseError,
     #[error("Token Mismatch, expecting {0}")]
