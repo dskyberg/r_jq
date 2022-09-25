@@ -1,10 +1,11 @@
-use crate::{JQError, KeyType, Range};
+use crate::{IndexType, JQError, RangeType};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Token<'a> {
+    Identity,
     Ident(&'a str),
-    Iterator(Option<Range>),
-    Key(KeyType<'a>),
+    Range(RangeType),
+    Index(IndexType<'a>),
     Filter(Vec<Token<'a>>),
 }
 
@@ -16,16 +17,16 @@ impl<'a> Token<'a> {
         }
     }
 
-    pub fn as_iterator(&self) -> Result<&Option<Range>, JQError> {
+    pub fn as_range(&self) -> Result<&RangeType, JQError> {
         match self {
-            Token::Iterator(range) => Ok(range),
-            _ => Err(JQError::TokenMismatch("Iterator".to_string())),
+            Token::Range(range) => Ok(range),
+            _ => Err(JQError::TokenMismatch("Range".to_string())),
         }
     }
 
-    pub fn as_key(&self) -> Result<&KeyType<'a>, JQError> {
+    pub fn as_index(&self) -> Result<&IndexType<'a>, JQError> {
         match self {
-            Token::Key(key_type) => Ok(key_type),
+            Token::Index(index) => Ok(index),
             _ => Err(JQError::TokenMismatch("Key".to_string())),
         }
     }
@@ -37,12 +38,21 @@ impl<'a> Token<'a> {
         }
     }
 
-    pub fn is_identity(&self) -> Result<bool, JQError> {
-        let keys = self.as_filter()?;
-        if keys.len() != 1 {
-            return Ok(false);
+    pub fn is_identity(&self) -> bool {
+        match self {
+            Token::Identity => true,
+            Token::Filter(filters) => filters.len() == 1 && filters[0].is_identity(),
+            _ => false,
         }
-        let key = keys[0].as_key()?;
-        Ok(key.is_identity())
+    }
+
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Token::Ident(_))
+    }
+    pub fn is_index(&self) -> bool {
+        matches!(self, Token::Index(_))
+    }
+    pub fn is_range(&self) -> bool {
+        matches!(self, Token::Range(_))
     }
 }

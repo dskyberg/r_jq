@@ -19,25 +19,25 @@
         "elem_3": "Object 3 Element 3"
     },
     "array_1": [
+        "Array 1 Element 0",
         "Array 1 Element 1",
-        "Array 1 Element 2",
-        "Array 1 Element 3"
+        "Array 1 Element 2"
     ],
     "array_2": [
         {
+            "elem_0": "Array 2 Object 0 Element 0",
+            "elem_1": "Array 2 Object 0 Element 1",
+            "elem_2": "Array 2 Object 0 Element 2"
+        },
+        {
+            "elem_0": "Array 2 Object 1 Element 0",
             "elem_1": "Array 2 Object 1 Element 1",
-            "elem_2": "Array 2 Object 1 Element 2",
-            "elem_3": "Array 2 Object 1 Element 3"
+            "elem_2": "Array 2 Object 1 Element 2"
         },
         {
+            "elem_0": "Array 2 Object 2 Element 0",
             "elem_1": "Array 2 Object 2 Element 1",
-            "elem_2": "Array 2 Object 2 Element 2",
-            "elem_3": "Array 2 Object 2 Element 3"
-        },
-        {
-            "elem_1": "Array 2 Object 3 Element 1",
-            "elem_2": "Array 2 Object 3 Element 2",
-            "elem_3": "Array 2 Object 3 Element 3"
+            "elem_2": "Array 2 Object 2 Element 2"
         }
     ]
 }

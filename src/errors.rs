@@ -22,8 +22,12 @@ pub enum JQError {
     RangeOutOfBounds(isize, isize, isize),
     #[error("Element does not support string index")]
     UnsupportedObjectIndex,
-    #[error("Keytype cannot have both identifier and range")]
-    BadKeyType,
+    #[error("Unexpected IndexType")]
+    BadIndexType,
     #[error("Keytype must have either identifier or range")]
-    MalformedKeyType,
+    MalformedIndexType,
+    #[error("Error querying object: {0}")]
+    ObjectQuery(String),
+    #[error("Error querying array: {0}")]
+    ArrayQuery(String),
 }

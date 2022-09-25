@@ -1,4 +1,4 @@
-use crate::{Block, Command, JQError, KeyType, Range, Token};
+use crate::{Block, Command, IndexType, JQError, RangeType, Token};
 
 peg::parser!( grammar query_parser() for str {
     rule _ = [' ' | '\t']*
@@ -15,62 +15,45 @@ peg::parser!( grammar query_parser() for str {
     pub rule string() -> &'input str
         = "\"" !"\"" s:$(['a'..='z' | 'A'..='Z' | '0'..='9' | ' ' | '_' | '-' | '/' | '#']*) "\"" {s}
 
+    pub rule identity() -> Token<'input>
+        = _ "." _ { Token::Identity }
 
-    /// Range specifier: <start>:<end>
-    /// Defines a start and end iterator
-    /// Either value may be negative, in which case it counts backwards from
-    /// the end of the array (for the start position) or from the start postion 
-    /// (for the end position). Both values can be omitted, in which case it refers to the
-    /// start or end of the array respectively.
-    pub rule range() -> Range
+    /// A Range iterates on an object or array
+    /// An empty range, `.[]`, iterates all values of an object or array
+    /// If not enpty, a range has  `[start:end]` syntax.
+    /// Either `start` or `end` may be omitted, but not both.
+    pub rule range() -> Token<'input>
         = precedence!{
-            start:number() _ ":" _ end:number()
-         { Range{start:Some(start), end:Some(end)} }
-        --
-            start:number() _ ":"? {Range::from_start(start)}
-        --
-            ":" _ end:number() {Range::from_end(end)}
+            _ "[" _ "]" _ {Token::Range(RangeType::new())}
+            --
+           _ "[" _ start:number() _ ":" _ "]" _ { Token::Range(RangeType::from_start(start)) }
+           --
+           _ "[" _ ":" _ end:number() _ "]" _ { Token::Range(RangeType::from_end(end)) }
+           --
+           _ "[" _ start:number() _  ":" _ end:number() _ "]" _ { Token::Range(RangeType::from_both(start,end)) }
+
         }
 
-    /// An iterator iterates on an array.  It can be specified as:
-    /// [] : iterates across the entire range
-    /// For objects, the iterator may be a raw string element name.
-    /// In the normal identifier,`.ident`, where `ident` contains special characters.
-    /// ["name with special characters"]
-    /// For arrays, the iterator may be an index or range
-    /// [idx] : iterates on a single entry
-    /// [range] : iterates across the defined range.  See [Range].
-    pub rule iterator() -> Token<'input>
-         = "[" _ r:range()? _ "]" { Token::Iterator(r)}
 
+    /// An  index is either a object index: `[string]` or an array index: `[number]`
+    /// Note: an empty set of brackets: `[]` is a range, not an index.
+    pub rule index() -> Token<'input>
+        = precedence! {
+            _ "[" _ i:string() _ "]" _ {Token::Index(IndexType::from_identifier(i))}
+            --
+            _ "[" _ n:number() _ "]" _ {Token::Index(IndexType::from_index(n))}
+        }
 
     pub rule identifier() -> Token<'input>
-        = i:ident() / "[" _ i:string() _ "]" {Token::Ident(i)}
-
-    /// A Key :
-    /// '.' _ identifier()? _ iterator()?
-    /// <element> - and element in the path
-    /// <element>[specifier] - either a number (for array start) or an element in quotes
-    /// Examples
-    /// elem1
-    /// array[<idx>]/
-    /// obj["element name"]
-    pub rule key() -> Token<'input>
-        = "." _ i:identifier()? _ ii:iterator()? {?
-            let identifier = match i {
-                Some(Token::Ident(s)) => Some(s),
-                _ => None,
-            };
-            let range = match ii {
-                Some(Token::Iterator(Some(r)) ) => Some(r),
-                Some(Token::Iterator(range)) => Some(Range::new()),
-                _ => None,
-            };
-            Ok(Token::Key (KeyType{
-                identifier,
-                range,
-            }))
+        = precedence! {
+            _ "." _ i:ident() _ {i}
+        --
+            _ "." _ s:string() _  {Token::Ident(s)}
         }
+
+
+    pub rule key() -> Token<'input>
+        =  identifier() / index() / range() / identity()
 
     /// A filter is a path of Keys
     pub rule filter() -> Token<'input>
@@ -115,64 +98,36 @@ mod tests {
 
     #[test]
     fn test_blocks() {
-        assert!(query_parser::blocks(r#" . , .b | ., .b"#).is_ok());
-        let key1 = Token::Key(KeyType {
-            identifier: None,
-            range: None,
-        });
-
-        let key2 = Token::Key(KeyType {
-            identifier: Some("b"),
-            range: None,
-        });
-
-        let filter1 = Token::Filter(vec![key1]);
-        let filter2 = Token::Filter(vec![key2]);
-        let filters1 = vec![filter1, filter2];
-        let block1 = Block {
-            filters: Some(filters1),
-        };
-
-        let key3 = Token::Key(KeyType {
-            identifier: None,
-            range: None,
-        });
-
-        let key4 = Token::Key(KeyType {
-            identifier: Some("b"),
-            range: None,
-        });
-
-        let filter3 = Token::Filter(vec![key3]);
-        let filter4 = Token::Filter(vec![key4]);
-        let filters2 = vec![filter3, filter4];
-        let block2 = Block {
-            filters: Some(filters2),
-        };
-        let blocks = vec![block1, block2];
-        assert_eq!(query_parser::blocks(r#" . , .b | ., .b"#), Ok(blocks));
+        assert_eq!(
+            query_parser::blocks(r#" . , .b | ., .b"#),
+            Ok(vec![
+                Block {
+                    filters: Some(vec![
+                        Token::Filter(vec![Token::Identity]),
+                        Token::Filter(vec![Token::Ident("b")])
+                    ]),
+                },
+                Block {
+                    filters: Some(vec![
+                        Token::Filter(vec![Token::Identity]),
+                        Token::Filter(vec![Token::Ident("b")])
+                    ])
+                }
+            ])
+        );
     }
 
     #[test]
     fn test_block() {
-        let key1 = Token::Key(KeyType {
-            identifier: None,
-            range: None,
-        });
-
-        let key2 = Token::Key(KeyType {
-            identifier: Some("b"),
-            range: None,
-        });
-
-        let filter1 = Token::Filter(vec![key1]);
-        let filter2 = Token::Filter(vec![key2]);
-        let filters = vec![filter1, filter2];
-        let block = Block {
-            filters: Some(filters),
-        };
-
-        assert_eq!(query_parser::block(r#"., .b"#), Ok(block));
+        assert_eq!(
+            query_parser::block(". , .b"),
+            Ok(Block {
+                filters: Some(vec![
+                    Token::Filter(vec![Token::Identity]),
+                    Token::Filter(vec![Token::Ident("b")])
+                ])
+            })
+        );
     }
 
     #[test]
@@ -205,7 +160,6 @@ mod tests {
             })
         );
     }
-
     #[test]
     fn test_length() {
         assert_eq!(query_parser::length(" length "), Ok(Command::Length));
@@ -215,23 +169,14 @@ mod tests {
     fn test_filters() {
         assert_eq!(
             query_parser::filters("."),
-            Ok(vec![Token::Filter(vec![Token::Key(KeyType {
-                identifier: None,
-                range: None,
-            })])])
+            Ok(vec![Token::Filter(vec![Token::Identity])])
         );
 
         assert_eq!(
             query_parser::filters(". , .b"),
             Ok(vec![
-                Token::Filter(vec![Token::Key(KeyType {
-                    identifier: None,
-                    range: None,
-                })]),
-                Token::Filter(vec![Token::Key(KeyType {
-                    identifier: Some("b"),
-                    range: None,
-                })])
+                Token::Filter(vec![Token::Identity]),
+                Token::Filter(vec![Token::Ident("b")])
             ])
         );
     }
@@ -240,225 +185,198 @@ mod tests {
     fn test_filter() {
         assert_eq!(
             query_parser::filter("."),
-            Ok(Token::Filter(vec![Token::Key(KeyType {
-                identifier: None,
-                range: None,
-            })]))
+            Ok(Token::Filter(vec![Token::Identity]))
         );
 
         assert_eq!(
             query_parser::filter(".a"),
-            Ok(Token::Filter(vec![Token::Key(KeyType {
-                identifier: Some("a"),
-                range: None,
-            })]))
+            Ok(Token::Filter(vec![Token::Ident("a")]))
         );
 
         assert_eq!(
-            query_parser::filter(".a.b"),
+            query_parser::filter(".[]"),
             Ok(Token::Filter(vec![
-                Token::Key(KeyType {
-                    identifier: Some("a"),
-                    range: None,
-                }),
-                Token::Key(KeyType {
-                    identifier: Some("b"),
-                    range: None,
+                Token::Identity,
+                Token::Range(RangeType {
+                    start: None,
+                    end: None,
                 })
             ]))
         );
 
         assert_eq!(
+            query_parser::filter(".a.b"),
+            Ok(Token::Filter(vec![Token::Ident("a"), Token::Ident("b")]))
+        );
+
+        assert_eq!(
+            query_parser::filter(r#"."a".b"#),
+            Ok(Token::Filter(vec![Token::Ident("a"), Token::Ident("b")]))
+        );
+
+        assert_eq!(
             query_parser::filter(r#".["a"].b"#),
             Ok(Token::Filter(vec![
-                Token::Key(KeyType {
+                Token::Identity,
+                Token::Index(IndexType {
                     identifier: Some("a"),
-                    range: None,
+                    index: None,
                 }),
-                Token::Key(KeyType {
-                    identifier: Some("b"),
-                    range: None,
-                })
+                Token::Ident("b")
             ]))
         );
     }
 
     #[test]
     fn test_key() {
+        assert_eq!(query_parser::key("."), Ok(Token::Identity));
+
+        assert_eq!(query_parser::key(".a"), Ok(Token::Ident("a",)));
+
+        assert_eq!(query_parser::key(r#"."a""#), Ok(Token::Ident("a",)));
+
         assert_eq!(
-            query_parser::key("."),
-            Ok(Token::Key(KeyType {
-                identifier: None,
-                range: None
-            }))
-        );
-        assert_eq!(
-            query_parser::key(". []"),
-            Ok(Token::Key(KeyType {
-                identifier: None,
-                range: Some(Range {
-                    start: None,
-                    end: None
-                })
+            query_parser::key(r#"["a"]"#),
+            Ok(Token::Index(IndexType {
+                identifier: Some("a"),
+                index: None
             }))
         );
 
         assert_eq!(
-            query_parser::key(".a"),
-            Ok(Token::Key(KeyType {
-                identifier: Some("a"),
-                range: None
-            }))
-        );
-        assert_eq!(
-            query_parser::key(r#".["a"][]"#),
-            Ok(Token::Key(KeyType {
-                identifier: Some("a"),
-                range: Some(Range {
-                    start: None,
-                    end: None
-                })
+            query_parser::key(r#"[2]"#),
+            Ok(Token::Index(IndexType {
+                identifier: None,
+                index: Some(2)
             }))
         );
 
+        assert_eq!(query_parser::key("[]"), Ok(Token::Range(RangeType::new())));
+
         assert_eq!(
-            query_parser::key(r#".a[1:2]"#),
-            Ok(Token::Key(KeyType {
-                identifier: Some("a"),
-                range: Some(Range {
-                    start: Some(1),
-                    end: Some(2)
-                })
+            query_parser::key(r#"[1:2]"#),
+            Ok(Token::Range(RangeType {
+                start: Some(1),
+                end: Some(2)
             }))
         );
-        assert!(query_parser::key("some_segment.").is_err());
-        assert!(query_parser::key(".some_segment.some_other_segment").is_err());
-        assert!(query_parser::key("..").is_err());
     }
 
     #[test]
-    fn test_iterator() {
-        // Empty iterator
-        assert_eq!(query_parser::iterator("[]"), Ok(Token::Iterator(None)));
+    fn test_index() {
+        assert_eq!(
+            query_parser::index(r#"["a"]"#),
+            Ok(Token::Index(IndexType {
+                identifier: Some("a"),
+                index: None,
+            }))
+        );
 
-        assert_eq!(query_parser::iterator("[ ]"), Ok(Token::Iterator(None)));
+        assert_eq!(
+            query_parser::index(r#"[ "a" ]"#),
+            Ok(Token::Index(IndexType {
+                identifier: Some("a"),
+                index: None,
+            }))
+        );
+        // Empty iterator
+        assert!(query_parser::index("[]").is_err());
 
         // Index based iterator
         assert_eq!(
-            query_parser::iterator("[2]"),
-            Ok(Token::Iterator(Some(Range {
-                start: Some(2),
-                end: None
-            })))
+            query_parser::index("[2]"),
+            Ok(Token::Index(IndexType {
+                identifier: None,
+                index: Some(2),
+            }))
         );
 
         assert_eq!(
-            query_parser::iterator("[ 2]"),
-            Ok(Token::Iterator(Some(Range {
-                start: Some(2),
-                end: None
-            })))
-        );
-        assert_eq!(
-            query_parser::iterator("[2 ]"),
-            Ok(Token::Iterator(Some(Range {
-                start: Some(2),
-                end: None
-            })))
-        );
-        // Range based iterator
-        assert_eq!(
-            query_parser::iterator("[2:3]"),
-            Ok(Token::Iterator(Some(Range {
-                start: Some(2),
-                end: Some(3)
-            })))
-        );
-        assert_eq!(
-            query_parser::iterator("[ 2:3 ]"),
-            Ok(Token::Iterator(Some(Range {
-                start: Some(2),
-                end: Some(3)
-            })))
-        );
-        assert_eq!(
-            query_parser::iterator("[2 : 3]"),
-            Ok(Token::Iterator(Some(Range {
-                start: Some(2),
-                end: Some(3)
-            })))
+            query_parser::index("[ 2]"),
+            Ok(Token::Index(IndexType {
+                identifier: None,
+                index: Some(2),
+            }))
         );
 
-        // Identities are not iterators
-        assert!(query_parser::iterator(r#"["abc"]"#).is_err());
+        assert_eq!(
+            query_parser::index("[2 ]"),
+            Ok(Token::Index(IndexType {
+                identifier: None,
+                index: Some(2),
+            }))
+        );
     }
 
     #[test]
     fn test_range() {
-        assert!(query_parser::range("1").is_ok());
-
         assert_eq!(
-            query_parser::range("1:"),
-            Ok(Range {
+            query_parser::range("[1:]"),
+            Ok(Token::Range(RangeType {
                 start: Some(1),
                 end: None
-            })
-        );
-        assert_eq!(
-            query_parser::range("1 :"),
-            Ok(Range {
-                start: Some(1),
-                end: None
-            })
+            }))
         );
 
         assert_eq!(
-            query_parser::range("-1:"),
-            Ok(Range {
+            query_parser::range("[1 :]"),
+            Ok(Token::Range(RangeType {
+                start: Some(1),
+                end: None
+            }))
+        );
+
+        assert_eq!(
+            query_parser::range("[-1:]"),
+            Ok(Token::Range(RangeType {
                 start: Some(-1),
                 end: None
-            })
+            }))
         );
         assert_eq!(
-            query_parser::range(":1"),
-            Ok(Range {
+            query_parser::range("[:1]"),
+            Ok(Token::Range(RangeType {
                 start: None,
                 end: Some(1)
-            })
+            }))
         );
 
         assert_eq!(
-            query_parser::range(": 1"),
-            Ok(Range {
+            query_parser::range("[: 1]"),
+            Ok(Token::Range(RangeType {
                 start: None,
                 end: Some(1)
-            })
+            }))
         );
+
         assert_eq!(
-            query_parser::range("1:2"),
-            Ok(Range {
+            query_parser::range("[1:2]"),
+            Ok(Token::Range(RangeType {
                 start: Some(1),
                 end: Some(2)
-            })
+            }))
         );
+
         assert_eq!(
-            query_parser::range("1 : 2"),
-            Ok(Range {
+            query_parser::range("[1 : 2]"),
+            Ok(Token::Range(RangeType {
                 start: Some(1),
                 end: Some(2)
-            })
+            }))
         );
     }
 
     #[test]
     fn test_identifier() {
-        assert_eq!(query_parser::identifier("Ab_1c"), Ok(Token::Ident("Ab_1c")));
+        assert_eq!(
+            query_parser::identifier(".Ab_1c"),
+            Ok(Token::Ident("Ab_1c"))
+        );
 
         assert_eq!(
-            query_parser::identifier(r#"["Ab 1c"]"#),
+            query_parser::identifier(r#"."Ab 1c""#),
             Ok(Token::Ident("Ab 1c"))
         );
-        assert!(query_parser::identifier(r#"[Ab_1c]"#).is_err());
     }
 
     #[test]
