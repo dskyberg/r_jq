@@ -42,13 +42,60 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_2_blocks() {
-        let json = include_bytes!("../test/basic.json");
+    fn test_hello_world() {
+        let json = r#""Hello World!""#.as_bytes();
+        let query_str = r#"."#;
 
-        let query_str = ".object_1 | .elem_1";
         let result = jq(json, query_str).expect("Failed JQ");
+        //dbg!(&result);
+        assert_eq!(&result, &[json!("Hello World!")]);
+    }
 
-        assert_eq!(&result, &[json!("Object 1 Element 1")]);
+    #[test]
+    fn test_object_identifier_index() {
+        let json = r#"{"foo": 42, "bar": "less interesting data"}"#.as_bytes();
+        let query_str = r#".foo"#;
+
+        let result = jq(json, query_str).expect("Failed JQ");
+        //dbg!(&result);
+        assert_eq!(&result, &[json!(42)]);
+    }
+
+    #[test]
+    fn test_bad_object_identifier_index() {
+        let json = r#"{"notfoo": true, "alsonotfoo": false}"#.as_bytes();
+        let query_str = r#".foo"#;
+
+        let result = jq(json, query_str).expect("Failed JQ");
+        //dbg!(&result);
+        assert_eq!(&result, &[json!(null)]);
+    }
+
+    #[test]
+    fn test_generic_object_index() {
+        let json = r#"{"foo": 42}"#.as_bytes();
+        let query_str = r#".["foo"]"#;
+
+        let result = jq(json, query_str).expect("Failed JQ");
+        //dbg!(&result);
+        assert_eq!(&result, &[json!(42)]);
+    }
+    #[test]
+    fn test_array_index() {
+        let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
+        let query_str = ".[0]";
+
+        let result = jq(json, query_str).expect("Failed JQ");
+        //dbg!(&result);
+        assert_eq!(
+            &result,
+            &[json!(
+               {
+                "name": "JSON",
+                "good": true
+               }
+            )]
+        );
     }
 
     #[test]

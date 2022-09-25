@@ -117,11 +117,6 @@ fn is_terminal(value: &Value, token: &Token) -> bool {
 /// an array iterator.  Thus the input to query_filter is always either
 /// an object or an array
 fn query_filter_single_value(input: &Value, filter: &Token) -> Result<Vec<Value>, JQError> {
-    // If this filter is the identity filter, return the whole input
-    if filter.is_identity() {
-        return Ok(vec![input.clone()]);
-    }
-
     let tokens = filter.as_filter()?;
 
     // The filter is a set of identifier-indexes that is
@@ -134,6 +129,11 @@ fn query_filter_single_value(input: &Value, filter: &Token) -> Result<Vec<Value>
     while token_idx < tokens.len() {
         let token = &tokens[token_idx];
         token_idx += 1;
+
+        // If this filter is the identity filter, return the whole input
+        if token.is_identity() {
+            continue;
+        }
 
         // Make sure the element is not terminal
         if is_terminal(&element, token) {
@@ -330,6 +330,22 @@ mod tests {
     }
 
     #[test]
+    fn test_filter_object_with_identity() {
+        let json = include_str!("../test/basic.json");
+        let input: Value = serde_json::from_str(json).expect("Failed to parse");
+
+        let tokens = vec![
+            Token::Identity,
+            Token::Ident("object_1"),
+            Token::Ident("elem_1"),
+        ];
+        let filter = Token::Filter(tokens);
+
+        let result = query_filter(&vec![input], &filter).expect("Failed query");
+        assert_eq!(&result, &[json!("Object 1 Element 1")]);
+    }
+
+    #[test]
     fn test_filter_object() {
         let json = include_str!("../test/basic.json");
         let input: Value = serde_json::from_str(json).expect("Failed to parse");
@@ -342,18 +358,45 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_array() {
-        let json = include_str!("../test/basic.json");
-        let input: Value = serde_json::from_str(json).expect("Failed to parse");
-        let tokens = vec![
-            Token::Ident("array_1"),
-            Token::Index(IndexType::from_index(2)),
-        ];
+    fn test_filter_array_with_identity() {
+        let input = json!([{"name":"JSON", "good":true}, {"name":"XML", "good":false}]);
+
+        let tokens = vec![Token::Identity, Token::Index(IndexType::from_index(0))];
 
         let filter = Token::Filter(tokens);
 
         let result = query_filter(&vec![input], &filter).expect("Failed query");
-        assert_eq!(&result, &[json!("Array 1 Element 2")]);
+        //dbg!(&result);
+        assert_eq!(
+            &result,
+            &[json!(
+               {
+                "name": "JSON",
+                "good": true
+               }
+            )]
+        );
+    }
+
+    #[test]
+    fn test_filter_array() {
+        let input = json!([{"name":"JSON", "good":true}, {"name":"XML", "good":false}]);
+
+        let tokens = vec![Token::Index(IndexType::from_index(0))];
+
+        let filter = Token::Filter(tokens);
+
+        let result = query_filter(&vec![input], &filter).expect("Failed query");
+        //dbg!(&result);
+        assert_eq!(
+            &result,
+            &[json!(
+               {
+                "name": "JSON",
+                "good": true
+               }
+            )]
+        );
     }
 
     #[test]
