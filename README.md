@@ -17,7 +17,7 @@ This app has no real value other than I wanted to be able to query
 ### Object Identifier-Index `.foo`, `.foo.bar`
 
 ````sh
-> echo '{"foo": 42, "bar": "less interesting data"'| r_jq '.foo'
+> echo '{"foo": 42, "bar": "less interesting data"}'| r_jq '.foo'
 42
 ````
 
@@ -40,9 +40,9 @@ null
 ### Array Index `.[2]`
 
 ````sh
-> echo '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]
+> echo '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
 Output	{"name":"JSON", "good":true}
-' | r_jq '.[0]'
+'r_jq '.[0]'
 {"name":"JSON", "good":true}
 ````
 
