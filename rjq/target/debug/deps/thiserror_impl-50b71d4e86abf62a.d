@@ -1,0 +1,12 @@
+/Users/david/Development/parser_playground/r_jq/cli/target/debug/deps/libthiserror_impl-50b71d4e86abf62a.dylib: /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/lib.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/ast.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/attr.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/expand.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/fmt.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/generics.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/prop.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/valid.rs
+
+/Users/david/Development/parser_playground/r_jq/cli/target/debug/deps/thiserror_impl-50b71d4e86abf62a.d: /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/lib.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/ast.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/attr.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/expand.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/fmt.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/generics.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/prop.rs /Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/valid.rs
+
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/lib.rs:
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/ast.rs:
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/attr.rs:
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/expand.rs:
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/fmt.rs:
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/generics.rs:
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/prop.rs:
+/Users/david/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.34/src/valid.rs:

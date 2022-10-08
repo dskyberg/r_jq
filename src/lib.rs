@@ -8,9 +8,10 @@
 //! the original input.  This isn't attempted because a filter can transform
 //! the inputs.
 
+pub use action::*;
 pub use block::*;
-pub use command::*;
 pub use errors::*;
+pub use function::*;
 pub use index_type::*;
 pub use jq_peg::*;
 pub use query::*;
@@ -20,9 +21,10 @@ pub use token::*;
 
 pub use serde_json::Value;
 
+pub mod action;
 pub mod block;
-pub mod command;
 pub mod errors;
+pub mod function;
 pub mod index_type;
 pub mod jq_peg;
 pub mod query;

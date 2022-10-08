@@ -10,12 +10,16 @@ pub enum JQError {
     JSONError(#[from] serde_json::Error),
     #[error("Parse error")]
     ParseError,
+    #[error("Action Mismatch, expecting {0}")]
+    ActionMismatch(String),
     #[error("Token Mismatch, expecting {0}")]
     TokenMismatch(String),
     #[error("This Value is not an object")]
     NotAnObject,
     #[error("This Value is not an array")]
     NotAnArray,
+    #[error("Value variant is not supported for this function")]
+    UnsupportedValue,
     #[error("Element does not support range operations")]
     UnsupportedRange,
     #[error("Range boundary error: {0}:{1}-{2}")]

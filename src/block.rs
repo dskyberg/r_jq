@@ -1,6 +1,6 @@
-use crate::Token;
+use crate::Action;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Block<'a> {
-    pub filters: Option<Vec<Token<'a>>>,
+    pub actions: Option<Vec<Action<'a>>>,
 }
