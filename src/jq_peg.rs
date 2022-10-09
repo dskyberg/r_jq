@@ -6,6 +6,9 @@ peg::parser!( grammar query_parser() for str {
     /// Decimal number
     pub rule number() -> isize = n:$(['+' | '-']? ("0" / [ '0'..='9']+)) {n.parse().unwrap()}
 
+    pub rule number_list() -> Vec<isize>
+    =  number() ++  ","
+
     /// An identifier
     /// Must strt with an alpha character.  Can contain alphanumeric and '_'
     pub rule ident() -> Token<'input>
@@ -34,14 +37,13 @@ peg::parser!( grammar query_parser() for str {
 
         }
 
-
     /// An  index is either a object index: `[string]` or an array index: `[number]`
     /// Note: an empty set of brackets: `[]` is a range, not an index.
     pub rule index() -> Token<'input>
         = precedence! {
             _ "[" _ i:string() _ "]" _ {Token::Index(IndexType::from(i))}
             --
-            _ "[" _ n:number() _ "]" _ {Token::Index(IndexType::from(n))}
+            _ "[" _ n:number_list() _ "]" _ {Token::Index(IndexType::from(n))}
         }
 
     pub rule identifier() -> Token<'input>

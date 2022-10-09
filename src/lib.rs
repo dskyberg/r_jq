@@ -210,6 +210,17 @@
 //! assert_eq!(&result, &[json!("stedolan"), json!("jq"),json!("wikiflow")]);
 //! ```
 //!
+//! ```rust
+//! use r_jq::jq;
+//! use serde_json::json;
+//!
+//! let json = r#"["a","b","c","d","e"]"#.as_bytes();
+//! let query_str = r#".[4,2]"#;
+//!
+//! let result = jq(json, query_str).expect("Failed JQ");
+//! assert_eq!(&result, &[json!("e"), json!("c")]);
+//! ```
+//!
 //! ## Pipe: `|`
 //!
 //! ```rust
@@ -269,19 +280,6 @@ pub fn jq(json: &[u8], query_str: &str) -> Result<Vec<Value>, JQError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_comma_in_range() {
-        // TODO: fix this
-        /*
-                use serde_json::json;
-                let json = r#"["a","b","c","d","e"]"#.as_bytes();
-                let query_str = r#".[4,2]"#;
-
-                let result = jq(json, query_str).expect("Failed JQ");
-                assert_eq!(&result, &[json!("e"), json!("c")]);
-        */
-    }
 
     #[test]
     fn test_identity() {

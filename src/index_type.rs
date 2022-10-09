@@ -5,7 +5,7 @@ use crate::JQError;
 #[derive(PartialEq, Debug, Clone)]
 pub struct IndexType<'a> {
     identifier: Option<&'a str>,
-    index: Option<isize>,
+    index: Option<Vec<isize>>,
 }
 
 impl<'a> IndexType<'a> {
@@ -41,9 +41,9 @@ impl<'a> IndexType<'a> {
     }
 
     /// Return the index
-    pub fn as_index(&self) -> Result<isize, JQError> {
-        match self.index {
-            Some(index) => Ok(index),
+    pub fn as_index(&self) -> Result<Vec<isize>, JQError> {
+        match &self.index {
+            Some(index) => Ok(index.to_vec()),
             _ => Err(JQError::BadIndexType),
         }
     }
@@ -62,7 +62,16 @@ impl<'a> From<isize> for IndexType<'a> {
     fn from(index: isize) -> Self {
         Self {
             identifier: None,
-            index: Some(index),
+            index: Some(vec![index]),
+        }
+    }
+}
+
+impl<'a> From<Vec<isize>> for IndexType<'a> {
+    fn from(indexes: Vec<isize>) -> Self {
+        Self {
+            identifier: None,
+            index: Some(indexes),
         }
     }
 }

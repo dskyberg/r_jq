@@ -1,6 +1,14 @@
 use super::Value;
-use crate::{fn_has, fn_length, from_range, Action, Block, Filter, Function, JQError, Token};
+use crate::{
+    fn_has, fn_length, from_range, Action, Block, Filter, Function, IndexType, JQError, RangeType,
+    Token,
+};
 use serde_json::Map;
+
+/// Called by [fn_has]
+pub fn query_object_ident(object: &Map<String, Value>, id: &str) -> Result<Vec<Value>, JQError> {
+    Ok(vec![object.get(id).unwrap_or(&Value::Null).clone()])
+}
 
 /// Traverse an object
 /// Single element lookup for an object value.  This is a nonterminal function.
@@ -9,19 +17,14 @@ use serde_json::Map;
 ///
 /// An error is returned if the value is not an object or the key is not an
 /// object identifier-index.
-pub fn query_object_element(object: &Value, key: &Token) -> Result<Value, JQError> {
-    match key {
-        Token::Ident(id) => Ok(object.get(id).unwrap_or(&Value::Null).clone()),
-        Token::Index(idx) =>
-        // If this is an identifier style index, return that
-        {
-            Ok(object
-                .get(idx.as_identifier()?)
-                .unwrap_or(&Value::Null)
-                .clone())
-        }
-        _ => Err(JQError::ObjectQuery(format!("Wrong key type: {:?}", key))),
-    }
+pub fn query_object_index(
+    object: &Map<String, Value>,
+    idx: &IndexType,
+) -> Result<Vec<Value>, JQError> {
+    Ok(vec![object
+        .get(idx.as_identifier()?)
+        .unwrap_or(&Value::Null)
+        .clone()])
 }
 
 /// Query an object with a Range token
@@ -29,21 +32,19 @@ pub fn query_object_element(object: &Value, key: &Token) -> Result<Value, JQErro
 /// as an array.  So `{"a":"a_val", "b":"b_val"}` is converted to `["a_val", "b_val"]
 ///
 /// Returns Err if the element is not an object
-fn query_object_range(object: &Map<String, Value>, key: &Token) -> Result<Vec<Value>, JQError> {
-    match key {
-        Token::Range(range) => {
-            if !range.is_empty() {
-                return Err(JQError::ObjectQuery("Only empty range allowed".to_string()));
-            }
-            let mut values = Vec::new();
-            // return each element in the object
-            for (_, value) in object {
-                values.push(value.clone())
-            }
-            Ok(values)
-        }
-        _ => Err(JQError::ObjectQuery(format!("Wrong key type: {:?}", key))),
+fn query_object_range(
+    object: &Map<String, Value>,
+    range: &RangeType,
+) -> Result<Vec<Value>, JQError> {
+    if !range.is_empty() {
+        return Err(JQError::ObjectQuery("Only empty range allowed".to_string()));
     }
+    let mut values = Vec::new();
+    // return each element in the object
+    for (_, value) in object {
+        values.push(value.clone())
+    }
+    Ok(values)
 }
 
 /// Travers an array.
@@ -53,136 +54,138 @@ fn query_object_range(object: &Map<String, Value>, key: &Token) -> Result<Vec<Va
 /// This function can be called in path traversal.
 ///
 /// An error is returned if the value is not an array or the key is not an index.
-pub fn query_array_element(value: &Value, key: &Token) -> Result<Value, JQError> {
-    // Ensure the value is an array.  Convert for array style processing
-    let array = value.as_array().ok_or(JQError::NotAnArray)?;
-
-    match key {
-        Token::Index(index) => {
-            let mut idx = index.as_index()?;
-            // If idx is negative, pull from end of array
-            if idx < 0 {
-                idx += array.len() as isize;
-            }
-            // If idx is out of bounds, return null
-            if idx >= array.len() as isize {
-                return Ok(Value::Null);
-            }
-            Ok(array[idx as usize].clone())
+pub fn query_array_index(array: &Vec<Value>, index: &IndexType) -> Result<Vec<Value>, JQError> {
+    let mut results: Vec<Value> = Vec::new();
+    let indexes = index.as_index()?;
+    for mut idx in indexes {
+        // If idx is negative, pull from end of array
+        if idx < 0 {
+            idx += array.len() as isize;
         }
-        _ => {
-            dbg!(key);
-            Err(JQError::ArrayQuery("Must be an index".to_string()))
+        // If idx is out of bounds, return null
+        if idx >= array.len() as isize {
+            results.push(Value::Null);
+            continue;
+        }
+        results.push(array[idx as usize].clone());
+    }
+    Ok(results)
+}
+
+fn query_string_index(input: &str, index: &IndexType) -> Result<Vec<Value>, JQError> {
+    let mut results: Vec<Value> = Vec::new();
+    let indexes = index.as_index()?;
+    for mut idx in indexes {
+        if idx < 0 {
+            idx += input.len() as isize;
+        }
+        if idx >= input.len() as isize {
+            results.push(Value::Null);
+        }
+        results.push(Value::from(
+            input.get(idx as usize..idx as usize + 1).unwrap_or(""),
+        ));
+    }
+    Ok(results)
+}
+/// Query an array.  This is a terminal query operation.
+///
+/// Returns an error if the value is not an array, or the key is not a range.
+fn query_array_range(array: &Vec<Value>, range: &RangeType) -> Result<Vec<Value>, JQError> {
+    let mut values = Vec::new();
+    if range.is_empty() {
+        for val in array {
+            values.push(val.clone());
+        }
+    } else {
+        // Convert the jq style range to a Rust range
+        for val in from_range(array, range)? {
+            values.push(val.clone());
         }
     }
+    Ok(values)
 }
 
 /// Query an array.  This is a terminal query operation.
 ///
 /// Returns an error if the value is not an array, or the key is not a range.
-fn query_array_range(array: &Vec<Value>, key: &Token) -> Result<Vec<Value>, JQError> {
-    match key {
-        Token::Range(range) => {
-            let mut values = Vec::new();
-            if range.is_empty() {
-                for val in array {
-                    values.push(val.clone());
-                }
-            } else {
-                // Convert the jq style range to a Rust range
-                for val in from_range(array, range)? {
-                    values.push(val.clone());
-                }
-            }
-            Ok(values)
-        }
-        _ => Err(JQError::ArrayQuery(
-            "Must be either an index or a range".to_string(),
-        )),
+fn query_string_range(value: &str, range: &RangeType) -> Result<Vec<Value>, JQError> {
+    if range.is_empty() {
+        return Ok(vec![Value::from(value)]);
+    }
+    let len = value.len();
+    let (start, end) = range.as_slice(len);
+    let val = value.get(start..end).unwrap_or("");
+
+    Ok(vec![Value::from(val)])
+}
+
+/// Used by [fn_has]
+pub fn query_identity(input: &Value) -> Result<Vec<Value>, JQError> {
+    Ok(vec![input.to_owned()])
+}
+
+/// Used by [fn_has]
+pub fn query_ident(input: &Value, id: &str) -> Result<Vec<Value>, JQError> {
+    match input {
+        Value::Object(object) => query_object_ident(object, id),
+        _ => Ok(vec![input.to_owned()]),
     }
 }
 
-/// Query an array.  This is a terminal query operation.
-///
-/// Returns an error if the value is not an array, or the key is not a range.
-fn query_string_range(value: &str, key: &Token) -> Result<Vec<Value>, JQError> {
-    match key {
-        Token::Range(range) => {
-            if range.is_empty() {
-                return Ok(vec![Value::from(value)]);
-            }
-            let len = value.len();
-            let (start, end) = range.as_slice(len);
-            let val = value.get(start..end).unwrap_or("");
-
-            Ok(vec![Value::from(val)])
-        }
-        _ => Err(JQError::ObjectQuery(format!("Wrong key type: {:?}", key))),
+/// Used by [fn_has]
+pub fn query_range(input: &Value, range: &RangeType) -> Result<Vec<Value>, JQError> {
+    match input {
+        Value::Object(object) => query_object_range(object, range),
+        Value::Array(array) => query_array_range(array, range),
+        Value::String(s) => query_string_range(s, range),
+        _ => Ok(vec![input.to_owned()]),
     }
 }
 
-fn is_terminal(value: &Value, token: &Token) -> bool {
-    match value {
-        Value::Object(_) => matches!(token, Token::Range(_)),
-        Value::Array(_) => matches!(token, Token::Range(_)),
-        _ => true,
+/// Used by [fn_has]
+pub fn query_index(input: &Value, index: &IndexType) -> Result<Vec<Value>, JQError> {
+    match input {
+        Value::Object(object) => query_object_index(object, index),
+        Value::Array(array) => query_array_index(array, index),
+        Value::String(s) => query_string_index(s, index),
+        _ => Ok(vec![input.to_owned()]),
     }
 }
 
-/// Traverse a set of Token::Key values that represent a path.  Process
-/// each input Value with the path.  
-/// At each level, the path may represent either an object index or
-/// an array iterator.  Thus the input to query_filter is always either
-/// an object or an array
-fn query_filter_single_value(input: &Value, tokens: &Filter) -> Result<Vec<Value>, JQError> {
-    // The filter is a set of identifier-indexes that is
-    // optionally terminated with a range.
-    // The first step is to Walk the nonterminal identifier-indexes, until a
-    // terminal token or the last key is reached.
-    let mut token_idx = 0;
-    let mut element = input.clone();
+/// Query each input with the given token
+fn query_single_token(inputs: &Vec<Value>, token: &Token) -> Result<Vec<Value>, JQError> {
+    let mut results: Vec<Value> = Vec::new();
 
-    while token_idx < tokens.len() {
-        let token = &tokens[token_idx];
-        token_idx += 1;
+    for input in inputs {
+        let mut result = match token {
+            Token::Identity => query_identity(input)?,
+            Token::Ident(ident) => query_ident(input, ident)?,
+            Token::Range(range) => query_range(input, range)?,
+            Token::Index(index) => query_index(input, index)?,
+        };
+        results.append(&mut result);
+    }
 
-        // If this filter is the identity filter, return the whole input
+    Ok(results)
+}
+
+/// We need to walk the set of Filter elements, and process each.
+/// Currently, we are doing this backward.  For each value, we are processing
+/// the filter.  But this doesn't work if a filter element can return multiple
+/// values, such as `.array[1,2]
+/// For each filter element
+///     execute the filter query and return the collection of results.
+fn query_filter(inputs: &[Value], filter: &Filter) -> Result<Vec<Value>, JQError> {
+    let mut values = inputs.to_vec();
+
+    for token in filter {
         if token.is_identity() {
             continue;
         }
-
-        // Make sure the element is not terminal
-        if is_terminal(&element, token) {
-            let result = match element {
-                Value::Object(object) => query_object_range(&object, token)?,
-                Value::Array(array) => query_array_range(&array, token)?,
-                Value::String(s) => query_string_range(&s, token)?,
-                _ => vec![element],
-            };
-            return Ok(result);
-        }
-
-        element = match element {
-            // If the input is an object, then either
-            // query an element, or return the object
-            Value::Object(_) => query_object_element(&element, token)?,
-            Value::Array(_) => query_array_element(&element, token)?,
-            _ => element,
-        };
+        values = query_single_token(&values, token)?;
     }
-
-    Ok(vec![element])
-}
-
-fn query_filter(inputs: &Vec<Value>, filter: &Filter) -> Result<Vec<Value>, JQError> {
-    let mut output: Vec<Value> = Vec::new();
-
-    for input in inputs {
-        let mut results = query_filter_single_value(input, filter)?;
-        output.append(&mut results);
-    }
-
-    Ok(output)
+    Ok(values)
 }
 
 fn query_function(inputs: &Vec<Value>, func: Function) -> Result<Vec<Value>, JQError> {
@@ -325,7 +328,7 @@ mod tests {
         let input: Value = serde_json::from_slice(json).expect("Failed to parse json");
 
         let filter = vec![Token::Identity];
-        let result = query_filter(&vec![input.clone()], &filter).expect("Failed query");
+        let result = query_filter(&[input.clone()], &filter).expect("Failed query");
 
         //dbg!(&result);
         assert_eq!(&result, &vec![input]);
@@ -342,7 +345,7 @@ mod tests {
             Token::Ident("elem_1"),
         ];
 
-        let result = query_filter(&vec![input], &filter).expect("Failed query");
+        let result = query_filter(&[input], &filter).expect("Failed query");
         assert_eq!(&result, &[json!("Object 1 Element 1")]);
     }
 
@@ -353,7 +356,7 @@ mod tests {
 
         let filter = vec![Token::Ident("object_1"), Token::Ident("elem_1")];
 
-        let result = query_filter(&vec![input], &filter).expect("Failed query");
+        let result = query_filter(&[input], &filter).expect("Failed query");
         assert_eq!(&result, &[json!("Object 1 Element 1")]);
     }
 
@@ -363,7 +366,7 @@ mod tests {
 
         let filter = vec![Token::Identity, Token::Index(IndexType::from(0))];
 
-        let result = query_filter(&vec![input], &filter).expect("Failed query");
+        let result = query_filter(&[input], &filter).expect("Failed query");
         //dbg!(&result);
         assert_eq!(
             &result,
@@ -382,7 +385,7 @@ mod tests {
 
         let filter = vec![Token::Index(IndexType::from(0))];
 
-        let result = query_filter(&vec![input], &filter).expect("Failed query");
+        let result = query_filter(&[input], &filter).expect("Failed query");
         //dbg!(&result);
         assert_eq!(
             &result,
@@ -397,71 +400,71 @@ mod tests {
 
     #[test]
     fn test_query_object_by_ident() {
-        let object = json!({"elem1":"element 1"});
-        let key = Token::Ident("elem1");
-        let result = query_object_element(&object, &key).expect("Failed to query");
-        assert_eq!(result, json!("element 1"));
+        let value = json!({"elem1":"element 1"});
+        let result =
+            query_object_ident(value.as_object().unwrap(), "elem1").expect("Failed to query");
+        assert_eq!(result, vec![json!("element 1")]);
     }
 
     #[test]
     fn test_query_nested_object_by_ident() {
-        let object = json!({"object_1":{"elem1":"element 1"}});
-        let key = Token::Ident("object_1");
-        let result = query_object_element(&object, &key).expect("query failed");
+        let value = json!({"object_1":{"elem1":"element 1"}});
+        let result =
+            query_object_ident(value.as_object().unwrap(), "object_1").expect("query failed");
 
-        assert_eq!(result, json!({"elem1":"element 1"}));
+        assert_eq!(result, vec![json!({"elem1":"element 1"})]);
     }
 
     #[test]
     fn test_object_by_index() {
-        let object = json!({"object_1":{"elem1":"element 1"}});
-        let token = Token::Index(IndexType::from("object_1"));
-        let result = query_object_element(&object, &token).expect("query failed");
-        //dbg!(&result);
-        assert_eq!(result, json!({"elem1":"element 1"}));
+        let value = json!({"object_1":{"elem1":"element 1"}});
+        let index = IndexType::from("object_1");
+        let result = query_object_index(value.as_object().unwrap(), &index).expect("query failed");
+        // dbg!(&result);
+        assert_eq!(result, vec![json!({"elem1":"element 1"})]);
     }
 
     #[test]
     fn test_object_by_empty_index() {
         let object = json!({"a":"elem a", "b":"elem b"});
-        let token = Token::Range(RangeType::new());
-        let result = query_object_range(object.as_object().unwrap(), &token).expect("query failed");
+        let range = RangeType::new();
+        let result = query_object_range(object.as_object().unwrap(), &range).expect("query failed");
         //dbg!(&result);
         assert_eq!(result, vec![json!("elem a"), json!("elem b")]);
     }
 
     #[test]
     fn test_array_by_index() {
-        let array = json!(["0", "1", "2"]);
-        let token = Token::Index(IndexType::from(0));
-        let result = query_array_element(&array, &token).expect("query failed");
+        let value = json!(["0", "1", "2"]);
+        let index = IndexType::from(0);
+        let result = query_array_index(value.as_array().unwrap(), &index).expect("query failed");
         //dbg!(&result);
-        assert_eq!(result, json!("0"));
+        assert_eq!(result, vec![json!("0")]);
     }
 
     #[test]
     fn test_array_negative_index() {
-        let array = json!(["0", "1", "2"]);
-        let token = Token::Index(IndexType::from(-2));
-        let result = query_array_element(&array, &token).expect("query failed");
+        let value = json!(["0", "1", "2"]);
+        let index = IndexType::from(-2);
+        let result = query_array_index(value.as_array().unwrap(), &index).expect("query failed");
         //dbg!(&result);
-        assert_eq!(result, json!("1"));
+        assert_eq!(result, vec![json!("1")]);
     }
 
     #[test]
     fn test_array_by_index_oob() {
-        let array = json!(["0", "1", "2"]);
-        let token = Token::Index(IndexType::from(3));
-        let result = query_array_element(&array, &token).expect("query failed");
+        let value = json!(["0", "1", "2"]);
+        let index = IndexType::from(3);
+        let result = query_array_index(value.as_array().unwrap(), &index).expect("query failed");
         //dbg!(&result);
-        assert_eq!(result, json!(null));
+        assert_eq!(result, vec![json!(null)]);
     }
 
     #[test]
     fn test_array_by_empty_range() {
         let array = json!(["0", "1", "2"]);
-        let token = Token::Range(RangeType::new());
-        let result = query_array_range(array.as_array().unwrap(), &token).expect("query failed");
+        let range = RangeType::new();
+        let result = query_array_range(array.as_array().unwrap(), &range).expect("query failed");
         assert_eq!(result, vec![json!("0"), json!("1"), json!("2")]);
     }
 }
