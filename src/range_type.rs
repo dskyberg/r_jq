@@ -8,7 +8,7 @@ use crate::JQError;
 /// * `[start:stop]` : returns the elements from start (inclusive) to stop (exclusive)
 /// * `[isize:]` : returns all elements from stop to end of the array
 /// * `[:isize]`
-/// * [:]`
+/// * `[:]`
 #[derive(PartialEq, Debug, Clone)]
 pub struct RangeType {
     start: Option<isize>,
