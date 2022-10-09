@@ -210,7 +210,7 @@
 //! assert_eq!(&result, &[json!("stedolan"), json!("jq"),json!("wikiflow")]);
 //! ```
 //!
-//! Pipe: `|`
+//! ## Pipe: `|`
 //!
 //! ```rust
 //! use r_jq::jq;
