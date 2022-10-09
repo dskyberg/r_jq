@@ -3,61 +3,240 @@ A Rust based json query utility patterned after the famous jq utility.
 This app has no real value other than I wanted to be able to query
 [serde_json] structures, in a similar manner to jq.
 
-The examples that follow use the included [rjq](./rjq) command line utility.
+Modeled after jq.
+## Overview
+A query is a set of filters and functions that operate
+on an collection of [Values](serde_json::Value) and produce
+a new collection of [Values](serde_json::Value).
 
-# Supported Capabilities
+It is tempting to consider each input/output array to be references to
+the original input.  This isn't attempted because a block of filters and
+actions can transform the orginal inputs.
 
-## Basic Filters
+# Examples
 
-### Identity `.`
+## Identity
 
-````sh
-> echo '"Hello World!"' | rjq '.'
-"Hello World!"
+```rust
+use r_jq::jq;
+use serde_json::json;
 
-````
-### Object Identifier-Index `.foo`, `.foo.bar`
+let json = r#""Hello World!""#.as_bytes();
+let query_str = r#"."#;
 
-````sh
-> echo '{"foo": 42, "bar": "less interesting data"}'| rjq '.foo'
-42
-````
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("Hello World!")]);
+```
 
-````sh
-> echo '{"notfoo": true, "alsonotfoo": false}' | rjq '.foo'
-null
-````
+## Object Identifier-Index: `.foo`, `.foo.bar`
 
-### Generic Object Index `.[<string>]`
+```rust
+use r_jq::jq;
+use serde_json::json;
 
-````sh
-> echo '{"foo": 42}' | rjq '.["foo"]'
-42
-````
+let json = r#"{"foo": 42, "bar": "less interesting data"}"#.as_bytes();
+let query_str = r#".foo"#;
 
-### Array Index `.[2]`
-Array indexes return the nth element of an array.  
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(42)]);
+```
 
-If n >= 0, array[n] is returned.
+```rust
+use r_jq::jq;
+use serde_json::json;
 
-If the n < 0, array[array.len - n] is returned.
+let json = r#"{"notfoo": true, "alsonotfoo": false}"#.as_bytes();
+let query_str = r#".foo"#;
 
-If the index is out of bounds, `null` is returned.
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(null)]);
+```
+
+## Generic Object Index: `.[<string>]`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"foo": 42}"#.as_bytes();
+let query_str = r#".["foo"]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(42)]);
+```
+
+## Array Index: `.[2]`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
+let query_str = ".[0]";
+
+let result = jq(json, query_str).expect("Failed JQ");
+
+assert_eq!(&result, &[json!({"name": "JSON", "good": true})]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
+let query_str = r#".[0]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!({"name":"JSON", "good":true})]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
+let query_str = r#".[2]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(null)]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[1,2,3]"#.as_bytes();
+let query_str = r#".[-2]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(2)]);
+```
+
+## Array/String Slice: `.[10:15]`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"["a","b","c","d","e"]"#.as_bytes();
+let query_str = r#".[2:4]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("c"), json!("d")]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"["a","b","c","d","e"]"#.as_bytes();
+let query_str = r#".[:3]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("a"),json!("b"), json!("c")]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#""abcdefghi""#.as_bytes();
+let query_str = r#".[2:4]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("cd")]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"["a","b","c","d","e"]"#.as_bytes();
+let query_str = r#".[-2:]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("d"),json!("e")]);
+```
+## Array/Object Value Iterator: `.[]`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
+let query_str = r#".[]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!({"name":"JSON", "good":true}),json!({"name":"XML", "good":false})]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[]"#.as_bytes();
+let query_str = r#".[]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &Vec::<serde_json::Value>::new());
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"a": 1, "b": 1}"#.as_bytes();
+let query_str = r#".[]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(1),json!(1)]);
+```
+
+## Comma `,`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"foo": 42, "bar": "something else", "baz": true}"#.as_bytes();
+let query_str = r#".foo, .bar"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(42), json!("something else")]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"user":"stedolan", "projects": ["jq", "wikiflow"]}"#.as_bytes();
+let query_str = r#".user, .projects[]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("stedolan"), json!("jq"),json!("wikiflow")]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"["a","b","c","d","e"]"#.as_bytes();
+let query_str = r#".[4,2]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("e"), json!("c")]);
+```
+## Pipe: `|`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
+let query_str = r#".[] | .name"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("JSON"), json!("XML")]);
+```
 
 
-````sh
-> echo '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
-Output	{"name":"JSON", "good":true}
-'rjq '.[0]'
-{"name":"JSON", "good":true}
-````
-
-````sh
-> echo '[1,2,3]' | rjq '.[-2]'
-2
-````
-
-### Array Slice
-### Array/Object Value Iterator
-### Comma
-### Pipe
