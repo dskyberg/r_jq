@@ -1,17 +1,18 @@
-# r_jq
+
 A Rust based json query utility patterned after the famous jq utility.
 This app has no real value other than I wanted to be able to query
 [serde_json] structures, in a similar manner to jq.
 
-Modeled after jq.
-## Overview
-A query is a set of filters and functions that operate
-on an collection of [Values](serde_json::Value) and produce
-a new collection of [Values](serde_json::Value).
+The focus of this lib is to provide query capability.  There is no plan to
+support the broader scripting capability of JQ.  So, no aritimatic, and very little
+data transformation support.
 
-It is tempting to consider each input/output array to be references to
-the original input.  This isn't attempted because a block of filters and
-actions can transform the orginal inputs.
+Most basic filter cabilities work, with the exception of the Optional, `?`, 
+operator for identifiers and indexes.
+
+# Overview
+A query is a set of filters and functions that operate sequentionally on an collection of Values and produce a new collection of Values.  Each filter or function accepts a collection and return a new collection. 
+
 
 # Examples
 
