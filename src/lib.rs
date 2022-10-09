@@ -47,6 +47,8 @@
 //! assert_eq!(&result, &[json!(null)]);
 //! ```
 //!
+//! ## Generic Object Index: `.[<string>]`
+//!
 //! ```rust
 //! use r_jq::jq;
 //! use serde_json::json;
@@ -186,7 +188,7 @@
 //! assert_eq!(&result, &[json!(1),json!(1)]);
 //! ```
 //!
-//! ## Comma `.`
+//! ## Comma `,`
 //!
 //! ```rust
 //! use r_jq::jq;
