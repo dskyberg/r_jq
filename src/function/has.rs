@@ -1,11 +1,12 @@
-use serde_json::Value;
+/// `has` function
+///
+use crate::{query_array_element, query_object_element, HasType, JQError, Token, Value};
 
-//use crate::Block;
-use crate::{query_array_element, query_object_element, Function, JQError, Token};
-
-pub fn has(inputs: &Vec<Value>, command: &Function) -> Result<Vec<Value>, JQError> {
+/// Returns boolean if the input includes the element
+pub fn fn_has<'a>(inputs: &Vec<Value>, has: &HasType<'a>) -> Result<Vec<Value>, JQError> {
     let mut results: Vec<Value> = Vec::new();
-    let token = Token::try_from(command.to_owned())?;
+    let h = has.clone();
+    let token = Token::from(&h);
 
     for input in inputs {
         let result = match input {
@@ -26,16 +27,14 @@ pub fn has(inputs: &Vec<Value>, command: &Function) -> Result<Vec<Value>, JQErro
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Function;
+    use crate::HasType;
     use serde_json::json;
 
     #[test]
     fn test_object_has() {
         let objects = vec![json!({"elem1":"element 1"}), json!({"elem_1":"element 1"})];
-        let index = None;
-        let ident = Some("elem1");
-        let key = Function::Has { index, ident };
-        let result = has(&objects, &key).expect("Failed to query");
+        let key = HasType::from("elem1");
+        let result = fn_has(&objects, &key).expect("Failed to query");
         // dbg!(result);
         assert_eq!(result, vec![json!(true), json!(false)]);
     }
@@ -43,11 +42,9 @@ mod tests {
     #[test]
     fn test_array_has() {
         let arrays = vec![json!(["array_1", "array_2"]), json!(["array_1"])];
-        let index = Some(1);
-        let ident = None;
-        let key = Function::Has { index, ident };
-        let result = has(&arrays, &key).expect("Failed to query");
-        dbg!(result);
-        //assert_eq!(result, vec![json!(true), json!(false)]);
+        let key = HasType::from(1);
+        let result = fn_has(&arrays, &key).expect("Failed to query");
+        //dbg!(&result);
+        assert_eq!(result, vec![json!(true), json!(false)]);
     }
 }

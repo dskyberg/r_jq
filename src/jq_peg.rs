@@ -1,4 +1,4 @@
-use crate::{Action, Block, Function, IndexType, JQError, RangeType, Token};
+use crate::{Action, Block, Function, HasType, IndexType, JQError, RangeType, Token};
 
 peg::parser!( grammar query_parser() for str {
     rule _ = [' ' | '\t']*
@@ -39,9 +39,9 @@ peg::parser!( grammar query_parser() for str {
     /// Note: an empty set of brackets: `[]` is a range, not an index.
     pub rule index() -> Token<'input>
         = precedence! {
-            _ "[" _ i:string() _ "]" _ {Token::Index(IndexType::from_identifier(i))}
+            _ "[" _ i:string() _ "]" _ {Token::Index(IndexType::from(i))}
             --
-            _ "[" _ n:number() _ "]" _ {Token::Index(IndexType::from_index(n))}
+            _ "[" _ n:number() _ "]" _ {Token::Index(IndexType::from(n))}
         }
 
     pub rule identifier() -> Token<'input>
@@ -60,26 +60,29 @@ peg::parser!( grammar query_parser() for str {
     pub rule filter() -> Action<'input>
         = _ k:key()+ _ {Action::Filter(k)}
 
-    pub rule filters() -> Vec<Action<'input>>
-        =  filter() ++  ","
+    pub rule length() -> Action<'input>
+        = _ "length" _ {Action::Function(Function::Length)}
 
-    pub rule length() -> Function<'input>
-        = _ "length" _ {Function::Length}
-
-    pub rule has() -> Function<'input>
+    pub rule has() -> Action<'input>
         = precedence!{
-           _ "has(" _ ident:string()? _ ")" _ { Function::Has{index:None, ident}}
+           _ "has(" _ ident:string() _ ")" _ { Action::Function(Function::Has(HasType::from(ident)))}
             --
-           _ "has(" _ index:number()? _ ")" _ { Function::Has{index, ident:None}}
+           _ "has(" _ index:number() _ ")" _ { Action::Function(Function::Has(HasType::from(index)))}
         }
 
-    pub rule function() -> Function<'input>
-        = l:length() / h:has()
+    pub rule function() -> Action<'input>
+        = length() / has()
+
+    pub rule action() -> Action<'input>
+        = filter() / function()
+
+    pub rule actions() -> Vec<Action<'input>>
+    =  action() ++  ","
 
     /// A block is either a set of filters or a command
     pub rule block() -> Block<'input>
-        = _ filters:filters() _ {
-            Block{actions: Some(filters)}
+        = _ actions:actions() _ {
+            Block{actions: Some(actions)}
         }
 
     pub rule blocks() -> Vec<Block<'input>>
@@ -87,7 +90,7 @@ peg::parser!( grammar query_parser() for str {
 });
 
 /// Parse query string
-/// This ues the PEG grammer based [query_parser] above.  Since [query_parser] is not
+/// This ues the PEG grammer based `query_parser` above.  Since `query_parser` is not
 /// callable outside the module, this method is provided for public access.
 pub fn parse(input: &str) -> Result<Vec<Block>, JQError> {
     query_parser::blocks(input).map_err(|_| JQError::ParseError)
@@ -96,6 +99,12 @@ pub fn parse(input: &str) -> Result<Vec<Block>, JQError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_identity_to_array() {
+        let query = query_parser::block(".[]");
+        dbg!(&query);
+    }
 
     #[test]
     fn test_blocks() {
@@ -119,7 +128,30 @@ mod tests {
     }
 
     #[test]
-    fn test_block() {
+    fn test_block_filter_and_function() {
+        assert_eq!(
+            query_parser::block("., length "),
+            Ok(Block {
+                actions: Some(vec![
+                    Action::Filter(vec![Token::Identity]),
+                    Action::Function(Function::Length)
+                ])
+            })
+        );
+    }
+
+    #[test]
+    fn test_block_1_function() {
+        assert_eq!(
+            query_parser::block(" length "),
+            Ok(Block {
+                actions: Some(vec![Action::Function(Function::Length)])
+            })
+        );
+    }
+
+    #[test]
+    fn test_block_2_filters() {
         assert_eq!(
             query_parser::block(". , .b"),
             Ok(Block {
@@ -132,41 +164,32 @@ mod tests {
     }
 
     #[test]
+    fn test_block_1_filter() {
+        assert_eq!(
+            query_parser::block(".b"),
+            Ok(Block {
+                actions: Some(vec![Action::Filter(vec![Token::Ident("b")])])
+            })
+        );
+    }
+
+    #[test]
     fn test_function_has() {
         assert_eq!(
             query_parser::has(r#" has("some_path")"#),
-            Ok(Function::Has {
-                ident: Some("some_path"),
-                index: None
-            })
+            Ok(Action::Function(Function::Has(HasType::from("some_path"))))
         );
         assert_eq!(
             query_parser::has(r#" has(2)"#),
-            Ok(Function::Has {
-                ident: None,
-                index: Some(2)
-            })
+            Ok(Action::Function(Function::Has(HasType::from(2))))
         );
     }
 
     #[test]
     fn test_function_length() {
-        assert_eq!(query_parser::length(" length "), Ok(Function::Length));
-    }
-
-    #[test]
-    fn test_filters() {
         assert_eq!(
-            query_parser::filters("."),
-            Ok(vec![Action::Filter(vec![Token::Identity])])
-        );
-
-        assert_eq!(
-            query_parser::filters(". , .b"),
-            Ok(vec![
-                Action::Filter(vec![Token::Identity]),
-                Action::Filter(vec![Token::Ident("b")])
-            ])
+            query_parser::length(" length "),
+            Ok(Action::Function(Function::Length))
         );
     }
 
@@ -186,10 +209,7 @@ mod tests {
             query_parser::filter(".[]"),
             Ok(Action::Filter(vec![
                 Token::Identity,
-                Token::Range(RangeType {
-                    start: None,
-                    end: None,
-                })
+                Token::Range(RangeType::new())
             ]))
         );
 
@@ -207,10 +227,7 @@ mod tests {
             query_parser::filter(r#".["a"].b"#),
             Ok(Action::Filter(vec![
                 Token::Identity,
-                Token::Index(IndexType {
-                    identifier: Some("a"),
-                    index: None,
-                }),
+                Token::Index(IndexType::from("a")),
                 Token::Ident("b")
             ]))
         );
@@ -226,28 +243,19 @@ mod tests {
 
         assert_eq!(
             query_parser::key(r#"["a"]"#),
-            Ok(Token::Index(IndexType {
-                identifier: Some("a"),
-                index: None
-            }))
+            Ok(Token::Index(IndexType::from("a")))
         );
 
         assert_eq!(
             query_parser::key(r#"[2]"#),
-            Ok(Token::Index(IndexType {
-                identifier: None,
-                index: Some(2)
-            }))
+            Ok(Token::Index(IndexType::from(2)))
         );
 
         assert_eq!(query_parser::key("[]"), Ok(Token::Range(RangeType::new())));
 
         assert_eq!(
             query_parser::key(r#"[1:2]"#),
-            Ok(Token::Range(RangeType {
-                start: Some(1),
-                end: Some(2)
-            }))
+            Ok(Token::Range(RangeType::from_both(1, 2)))
         );
     }
 
@@ -261,18 +269,12 @@ mod tests {
     fn test_identifier_index() {
         assert_eq!(
             query_parser::index(r#"["a"]"#),
-            Ok(Token::Index(IndexType {
-                identifier: Some("a"),
-                index: None,
-            }))
+            Ok(Token::Index(IndexType::from("a")))
         );
 
         assert_eq!(
             query_parser::index(r#"[ "a" ]"#),
-            Ok(Token::Index(IndexType {
-                identifier: Some("a"),
-                index: None,
-            }))
+            Ok(Token::Index(IndexType::from("a")))
         );
     }
 
@@ -280,26 +282,17 @@ mod tests {
     fn test_index_index() {
         assert_eq!(
             query_parser::index("[2]"),
-            Ok(Token::Index(IndexType {
-                identifier: None,
-                index: Some(2),
-            }))
+            Ok(Token::Index(IndexType::from(2)))
         );
 
         assert_eq!(
             query_parser::index("[ 2]"),
-            Ok(Token::Index(IndexType {
-                identifier: None,
-                index: Some(2),
-            }))
+            Ok(Token::Index(IndexType::from(2)))
         );
 
         assert_eq!(
             query_parser::index("[2 ]"),
-            Ok(Token::Index(IndexType {
-                identifier: None,
-                index: Some(2),
-            }))
+            Ok(Token::Index(IndexType::from(2)))
         );
     }
 
@@ -307,10 +300,7 @@ mod tests {
     fn test_negative_index() {
         assert_eq!(
             query_parser::index("[-2]"),
-            Ok(Token::Index(IndexType {
-                identifier: None,
-                index: Some(-2),
-            }))
+            Ok(Token::Index(IndexType::from(-2)))
         );
     }
 
@@ -323,26 +313,17 @@ mod tests {
     fn test_range_start_only() {
         assert_eq!(
             query_parser::range("[1:]"),
-            Ok(Token::Range(RangeType {
-                start: Some(1),
-                end: None
-            }))
+            Ok(Token::Range(RangeType::from_start(1)))
         );
 
         assert_eq!(
             query_parser::range("[1 :]"),
-            Ok(Token::Range(RangeType {
-                start: Some(1),
-                end: None
-            }))
+            Ok(Token::Range(RangeType::from_start(1)))
         );
 
         assert_eq!(
             query_parser::range("[-1:]"),
-            Ok(Token::Range(RangeType {
-                start: Some(-1),
-                end: None
-            }))
+            Ok(Token::Range(RangeType::from_start(-1)))
         );
     }
 
@@ -350,18 +331,12 @@ mod tests {
     fn test_range_end_only() {
         assert_eq!(
             query_parser::range("[:1]"),
-            Ok(Token::Range(RangeType {
-                start: None,
-                end: Some(1)
-            }))
+            Ok(Token::Range(RangeType::from_end(1)))
         );
 
         assert_eq!(
             query_parser::range("[: 1]"),
-            Ok(Token::Range(RangeType {
-                start: None,
-                end: Some(1)
-            }))
+            Ok(Token::Range(RangeType::from_end(1)))
         );
     }
 
@@ -369,34 +344,22 @@ mod tests {
     fn test_range_start_end() {
         assert_eq!(
             query_parser::range("[1:2]"),
-            Ok(Token::Range(RangeType {
-                start: Some(1),
-                end: Some(2)
-            }))
+            Ok(Token::Range(RangeType::from_both(1, 2)))
         );
 
         assert_eq!(
             query_parser::range("[1 : 2]"),
-            Ok(Token::Range(RangeType {
-                start: Some(1),
-                end: Some(2)
-            }))
+            Ok(Token::Range(RangeType::from_both(1, 2)))
         );
 
         assert_eq!(
             query_parser::range("[ 1 : 2 ]"),
-            Ok(Token::Range(RangeType {
-                start: Some(1),
-                end: Some(2)
-            }))
+            Ok(Token::Range(RangeType::from_both(1, 2)))
         );
 
         assert_eq!(
             query_parser::range("[ 1 : 2 ]"),
-            Ok(Token::Range(RangeType {
-                start: Some(1),
-                end: Some(2)
-            }))
+            Ok(Token::Range(RangeType::from_both(1, 2)))
         );
     }
 

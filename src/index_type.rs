@@ -1,36 +1,20 @@
 use crate::JQError;
 
+/// Represents an identifier-index for objects and arrays. IndexType will have
+/// either an identifier or an index.
 #[derive(PartialEq, Debug, Clone)]
 pub struct IndexType<'a> {
-    pub identifier: Option<&'a str>,
-    pub index: Option<isize>,
+    identifier: Option<&'a str>,
+    index: Option<isize>,
 }
 
 impl<'a> IndexType<'a> {
-    pub fn new() -> Self {
-        Self {
-            identifier: None,
-            index: None,
-        }
-    }
-
-    pub fn from_identifier(id: &'a str) -> Self {
-        Self {
-            identifier: Some(id),
-            index: None,
-        }
-    }
-
-    pub fn from_index(index: isize) -> Self {
-        Self {
-            identifier: None,
-            index: Some(index),
-        }
-    }
+    /// True if identifier is Some
     pub fn is_identitfier(&self) -> bool {
         self.identifier.is_some()
     }
 
+    /// True if index is Some
     pub fn is_index(&self) -> bool {
         self.index.is_some()
     }
@@ -48,6 +32,7 @@ impl<'a> IndexType<'a> {
         false
     }
 
+    /// Return the identifier
     pub fn as_identifier(&self) -> Result<&str, JQError> {
         match self.identifier {
             Some(s) => Ok(s),
@@ -55,6 +40,7 @@ impl<'a> IndexType<'a> {
         }
     }
 
+    /// Return the index
     pub fn as_index(&self) -> Result<isize, JQError> {
         match self.index {
             Some(index) => Ok(index),
@@ -63,8 +49,20 @@ impl<'a> IndexType<'a> {
     }
 }
 
-impl<'a> Default for IndexType<'a> {
-    fn default() -> Self {
-        Self::new()
+impl<'a> From<&'a str> for IndexType<'a> {
+    fn from(id: &'a str) -> Self {
+        Self {
+            identifier: Some(id),
+            index: None,
+        }
+    }
+}
+
+impl<'a> From<isize> for IndexType<'a> {
+    fn from(index: isize) -> Self {
+        Self {
+            identifier: None,
+            index: Some(index),
+        }
     }
 }
