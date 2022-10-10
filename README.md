@@ -240,4 +240,75 @@ let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!("JSON"), json!("XML")]);
 ```
 
+## Pipe: `|`
 
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
+let query_str = r#".[] | .name"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!("JSON"), json!("XML")]);
+```
+## Builtin operators and functions
+
+### `length1
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[[1,2], "string", {"a":2}, null]"#.as_bytes();
+let query_str = r#".[] | length"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(2), json!(6), json!(1), json!(0)]);
+```
+### `keys`, `keys_unsorted`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"abc": 1, "abcd": 2, "Foo": 3}"#.as_bytes();
+let query_str = r#"keys"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(["Foo", "abc", "abcd"])]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[42, 3, 35]"#.as_bytes();
+let query_str = r#"keys"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!([0, 1, 2])]);
+```
+### `has(key)`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[{"foo": 42}, {}]"#.as_bytes();
+let query_str = r#".[] | has("foo")"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(true), json!(false)]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[[0,1], ["a","b","c"]]"#.as_bytes();
+let query_str = r#".[] | has(2)"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(false), json!(true)]);
+```
