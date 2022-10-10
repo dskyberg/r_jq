@@ -109,17 +109,6 @@ use r_jq::jq;
 use serde_json::json;
 
 let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
-let query_str = r#".[0]"#;
-
-let result = jq(json, query_str).expect("Failed JQ");
-assert_eq!(&result, &[json!({"name":"JSON", "good":true})]);
-```
-
-```rust
-use r_jq::jq;
-use serde_json::json;
-
-let json = r#"[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]"#.as_bytes();
 let query_str = r#".[2]"#;
 
 let result = jq(json, query_str).expect("Failed JQ");
@@ -217,6 +206,9 @@ let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!(1),json!(1)]);
 ```
 
+## `.[]?`
+Coming soon
+
 ## Comma `,`
 
 ```rust
@@ -265,8 +257,24 @@ let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!("JSON"), json!("XML")]);
 ```
 
+## Types and Values
+jq supports the same set of datatypes as JSON - numbers, strings, booleans, arrays, objects (which in JSON-speak are hashes with only string keys), and "null".
 
-## Recursive Descent `..1
+Booleans, null, strings and numbers are written the same way as in javascript. 
+
+## Array construction: `[]`
+
+Not yet.  Maybe never
+
+## Object Construction: {}
+
+Not yet.  Maybe never
+
+## Math functions
+
+Not yet.  Maybe never
+
+## Recursive Descent `..`
 
 ```rust
 use r_jq::jq;
@@ -293,6 +301,10 @@ let query_str = r#".[] | length"#;
 let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!(2), json!(6), json!(1), json!(0)]);
 ```
+## `utf8bytelength`
+
+Not yet
+
 ## `keys`, `keys_unsorted`
 
 ```rust
