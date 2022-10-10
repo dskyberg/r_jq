@@ -1,3 +1,7 @@
+/// PEG Parser
+///
+/// This module contains the PEG parser for parsing JQ query strings.
+///
 use crate::{Action, Block, Function, HasType, IndexType, JQError, RangeType, Token};
 
 peg::parser!( grammar query_parser() for str {
@@ -19,7 +23,7 @@ peg::parser!( grammar query_parser() for str {
         = "\"" !"\"" s:$(['a'..='z' | 'A'..='Z' | '0'..='9' | ' ' | '_' | '-' | '/' | '#']*) "\"" {s}
 
     pub rule identity() -> Token<'input>
-        = _ "." _ { Token::Identity }
+        = _ "." !"." _ { Token::Identity }
 
     /// A Range iterates on an object or array
     /// An empty range, `.[]`, iterates all values of an object or array
@@ -72,8 +76,15 @@ peg::parser!( grammar query_parser() for str {
            _ "has(" _ index:number() _ ")" _ { Action::Function(Function::Has(HasType::from(index)))}
         }
 
+    pub rule recurse() -> Action<'input>
+        = precedence!{
+             _ ".." _ {Action::Function(Function::Recurse)}
+            --
+            _ "recurse" _ {Action::Function(Function::Recurse)}
+        }
+
     pub rule function() -> Action<'input>
-        = length() / has()
+        = length() / has() / recurse()
 
     pub rule action() -> Action<'input>
         = filter() / function()
@@ -101,6 +112,12 @@ pub fn parse(input: &str) -> Result<Vec<Block>, JQError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_recurse() {
+        let query = parse(r#".[] | .."#).expect("Failed");
+        dbg!(&query);
+    }
 
     #[test]
     fn test_identity_to_array() {
