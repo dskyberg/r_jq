@@ -1,7 +1,7 @@
 use std::io::{stdin, Read};
 
 use clap::Parser;
-use r_jq::{jq, JQError};
+use r_jq::jq;
 
 /*
   --tab            use tabs for indentation;
@@ -61,7 +61,7 @@ pub struct Cli {
     query: String,
 }
 
-fn main() -> Result<(), JQError> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     let mut buffer = Vec::new();
