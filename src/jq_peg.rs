@@ -83,8 +83,12 @@ peg::parser!( grammar query_parser() for str {
             _ "recurse" _ {Action::Function(Function::Recurse)}
         }
 
+    pub rule keys() -> Action<'input>
+    = _ "keys" f:"_unsorted"?_ { Action::Function(Function::Keys(f.is_none()))}
+
+
     pub rule function() -> Action<'input>
-        = length() / has() / recurse()
+    = length() / has() / recurse() / keys()
 
     pub rule action() -> Action<'input>
         = filter() / function()

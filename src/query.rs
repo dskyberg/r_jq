@@ -1,7 +1,7 @@
 use super::Value;
 use crate::{
-    fn_has, fn_length, fn_recurse, from_range, Action, Block, Filter, Function, IndexType, JQError,
-    RangeType, Token,
+    fn_has, fn_keys, fn_length, fn_recurse, from_range, Action, Block, Filter, Function, IndexType,
+    JQError, RangeType, Token,
 };
 use serde_json::Map;
 
@@ -195,6 +195,7 @@ fn query_function(inputs: &Vec<Value>, func: Function) -> Result<Vec<Value>, JQE
         Function::Length => fn_length(inputs)?,
         Function::Has(has) => fn_has(inputs, &has)?,
         Function::Recurse => fn_recurse(inputs)?,
+        Function::Keys(sort) => fn_keys(inputs, sort)?,
     };
     output.append(&mut results);
 
