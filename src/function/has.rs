@@ -11,7 +11,7 @@ pub fn fn_has<'a>(inputs: &Vec<Value>, has: &HasType<'a>) -> Result<Vec<Value>, 
     for input in inputs {
         let result = match Token::from(has) {
             Token::Identity => query_identity(input),
-            Token::Ident(ident) => query_ident(input, ident),
+            Token::Ident(ident, silent) => query_ident(input, ident, silent),
             Token::Range(range) => query_range(input, &range),
             Token::Index(index) => query_index(input, &index),
         };

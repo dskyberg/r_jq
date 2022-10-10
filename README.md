@@ -53,6 +53,30 @@ let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!(null)]);
 ```
 
+## Optional Object Identifier-Index: `.foo?`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"foo": 42, "bar": "less interesting data"}"#.as_bytes();
+let query_str = r#".foo?"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(42)]);
+```
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"notfoo": true, "alsonotfoo": false}"#.as_bytes();
+let query_str = r#".foo?"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(null)]);
+```
+
 ## Generic Object Index: `.[<string>]`
 
 ```rust
@@ -227,6 +251,7 @@ let query_str = r#".[4,2]"#;
 let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!("e"), json!("c")]);
 ```
+
 ## Pipe: `|`
 
 ```rust
@@ -238,6 +263,20 @@ let query_str = r#".[] | .name"#;
 
 let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!("JSON"), json!("XML")]);
+```
+
+
+## Recursive Descent `..1
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[[{"a":1}]]"#.as_bytes();
+let query_str = r#"..|.a?"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(1)]);
 ```
 
 # Builtin operators and functions

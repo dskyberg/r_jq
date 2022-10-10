@@ -43,14 +43,14 @@ mod tests {
     #[test]
     fn block_from_actions() {
         let action1 = Action::from(Token::Identity);
-        let action2 = Action::from(Token::Ident("elem1"));
+        let action2 = Action::from(Token::Ident("elem1", false));
         let block = Block::from(vec![action1, action2]);
         assert_eq!(
             block,
             Block {
                 actions: Some(vec![
                     Action::Filter(vec![Token::Identity]),
-                    Action::Filter(vec![Token::Ident("elem1")])
+                    Action::Filter(vec![Token::Ident("elem1", false)])
                 ])
             }
         );

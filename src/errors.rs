@@ -61,4 +61,7 @@ pub enum JQError {
     ///
     #[error("HasType: {0}")]
     HasTypeError(String),
+    ///
+    #[error("{0}")]
+    IdentMismatch(String),
 }

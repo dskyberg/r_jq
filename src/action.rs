@@ -75,11 +75,11 @@ mod tests {
 
     #[test]
     fn test_from_token() {
-        let filter = vec![Token::Identity, Token::Ident(".something")];
+        let filter = vec![Token::Identity, Token::Ident(".something", false)];
         let action = Action::from(filter);
         assert_eq!(
             action,
-            Action::Filter(vec![Token::Identity, Token::Ident(".something")])
+            Action::Filter(vec![Token::Identity, Token::Ident(".something", false)])
         )
     }
 }

@@ -16,7 +16,7 @@ peg::parser!( grammar query_parser() for str {
     /// An identifier
     /// Must strt with an alpha character.  Can contain alphanumeric and '_'
     pub rule ident() -> Token<'input>
-        = s:$(['a'..='z' | 'A'..='Z'] ['a'..='z' | 'A'..='Z' | '0'..='9' | '_' ]*) {Token::Ident(s)}
+        = s:$(['a'..='z' | 'A'..='Z'] ['a'..='z' | 'A'..='Z' | '0'..='9' | '_' ]*) b:"?"? {Token::Ident(s, b.is_some())}
 
 
     pub rule string() -> &'input str
@@ -54,7 +54,7 @@ peg::parser!( grammar query_parser() for str {
         = precedence! {
             _ "." _ i:ident() _ {i}
         --
-            _ "." _ s:string() _  {Token::Ident(s)}
+            _ "." _ s:string() b:"?"? _  {Token::Ident(s, b.is_some())}
         }
 
 
@@ -137,13 +137,13 @@ mod tests {
                 Block {
                     actions: Some(vec![
                         Action::Filter(vec![Token::Identity,],),
-                        Action::Filter(vec![Token::Ident("b",),],),
+                        Action::Filter(vec![Token::Ident("b", false),],),
                     ],),
                 },
                 Block {
                     actions: Some(vec![
                         Action::Filter(vec![Token::Identity,],),
-                        Action::Filter(vec![Token::Ident("b",),],),
+                        Action::Filter(vec![Token::Ident("b", false),],),
                     ],),
                 },
             ])
@@ -180,7 +180,7 @@ mod tests {
             Ok(Block {
                 actions: Some(vec![
                     Action::Filter(vec![Token::Identity]),
-                    Action::Filter(vec![Token::Ident("b")])
+                    Action::Filter(vec![Token::Ident("b", false)])
                 ])
             })
         );
@@ -191,7 +191,7 @@ mod tests {
         assert_eq!(
             query_parser::block(".b"),
             Ok(Block {
-                actions: Some(vec![Action::Filter(vec![Token::Ident("b")])])
+                actions: Some(vec![Action::Filter(vec![Token::Ident("b", false)])])
             })
         );
     }
@@ -225,7 +225,7 @@ mod tests {
 
         assert_eq!(
             query_parser::filter(".a"),
-            Ok(Action::Filter(vec![Token::Ident("a")]))
+            Ok(Action::Filter(vec![Token::Ident("a", false)]))
         );
 
         assert_eq!(
@@ -238,12 +238,18 @@ mod tests {
 
         assert_eq!(
             query_parser::filter(".a.b"),
-            Ok(Action::Filter(vec![Token::Ident("a"), Token::Ident("b")]))
+            Ok(Action::Filter(vec![
+                Token::Ident("a", false),
+                Token::Ident("b", false)
+            ]))
         );
 
         assert_eq!(
             query_parser::filter(r#"."a".b"#),
-            Ok(Action::Filter(vec![Token::Ident("a"), Token::Ident("b")]))
+            Ok(Action::Filter(vec![
+                Token::Ident("a", false),
+                Token::Ident("b", false)
+            ]))
         );
 
         assert_eq!(
@@ -251,7 +257,7 @@ mod tests {
             Ok(Action::Filter(vec![
                 Token::Identity,
                 Token::Index(IndexType::from("a")),
-                Token::Ident("b")
+                Token::Ident("b", false)
             ]))
         );
     }
@@ -260,9 +266,9 @@ mod tests {
     fn test_key() {
         assert_eq!(query_parser::key("."), Ok(Token::Identity));
 
-        assert_eq!(query_parser::key(".a"), Ok(Token::Ident("a",)));
+        assert_eq!(query_parser::key(".a"), Ok(Token::Ident("a", false)));
 
-        assert_eq!(query_parser::key(r#"."a""#), Ok(Token::Ident("a",)));
+        assert_eq!(query_parser::key(r#"."a""#), Ok(Token::Ident("a", false)));
 
         assert_eq!(
             query_parser::key(r#"["a"]"#),
@@ -390,18 +396,21 @@ mod tests {
     fn test_identifier() {
         assert_eq!(
             query_parser::identifier(".Ab_1c"),
-            Ok(Token::Ident("Ab_1c"))
+            Ok(Token::Ident("Ab_1c", false))
         );
 
         assert_eq!(
             query_parser::identifier(r#"."Ab 1c""#),
-            Ok(Token::Ident("Ab 1c"))
+            Ok(Token::Ident("Ab 1c", false))
         );
     }
 
     #[test]
     fn test_ident() {
-        assert_eq!(query_parser::ident("Ab_1c"), Ok(Token::Ident("Ab_1c")));
+        assert_eq!(
+            query_parser::ident("Ab_1c"),
+            Ok(Token::Ident("Ab_1c", false))
+        );
         assert!(query_parser::ident("1Ab_1c").is_err());
     }
 

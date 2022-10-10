@@ -5,8 +5,8 @@ use crate::{Function, HasType, IndexType, JQError, RangeType};
 pub enum Token<'a> {
     /// I`.`, represents the entire input
     Identity,
-    /// `<str>`, represents an object key
-    Ident(&'a str),
+    /// `<str>`, represents an object key.  Bool repeents whether to return errors
+    Ident(&'a str, bool),
     ///  `[isize:isize]`, represents an array slice
     Range(RangeType),
     /// `[isize]`, represents an array index
@@ -15,9 +15,9 @@ pub enum Token<'a> {
 
 impl<'a> Token<'a> {
     /// Returns the ident component of a Token, or error
-    pub fn as_ident(&self) -> Result<&'a str, JQError> {
+    pub fn as_ident(&self) -> Result<(&'a str, bool), JQError> {
         match self {
-            Token::Ident(ident) => Ok(ident),
+            Token::Ident(ident, silent) => Ok((ident, *silent)),
             _ => Err(JQError::TokenMismatch("Ident".to_string())),
         }
     }
@@ -45,7 +45,7 @@ impl<'a> Token<'a> {
 
     /// True the Token is an Ident
     pub fn is_ident(&self) -> bool {
-        matches!(self, Token::Ident(_))
+        matches!(self, Token::Ident(..))
     }
 
     /// True the Token is an Index
@@ -63,7 +63,7 @@ impl<'a> From<&HasType<'a>> for Token<'a> {
     /// HasType is guaranteed to have either an ident or an index.
     fn from(has: &HasType<'a>) -> Self {
         if has.is_ident() {
-            return Token::Ident(has.as_ident().unwrap());
+            return Token::Ident(has.as_ident().unwrap(), false);
         }
         Token::Index(IndexType::from(has.as_index().unwrap()))
     }
@@ -88,7 +88,7 @@ mod tests {
     fn test_try_from_ident_has() {
         let has = HasType::from("elem1");
         let result = Token::try_from(&has).expect("Failed");
-        assert_eq!(result, Token::Ident("elem1"));
+        assert_eq!(result, Token::Ident("elem1", false));
     }
     #[test]
     fn test_try_from_index_has() {

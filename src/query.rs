@@ -5,6 +5,17 @@ use crate::{
 };
 use serde_json::Map;
 
+fn value_name(value: &Value) -> &str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "bool",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
+}
+
 /// Called by [fn_has]
 pub fn query_object_ident(object: &Map<String, Value>, id: &str) -> Result<Vec<Value>, JQError> {
     Ok(vec![object.get(id).unwrap_or(&Value::Null).clone()])
@@ -126,10 +137,19 @@ pub fn query_identity(input: &Value) -> Result<Vec<Value>, JQError> {
 }
 
 /// Used by [fn_has]
-pub fn query_ident(input: &Value, id: &str) -> Result<Vec<Value>, JQError> {
+pub fn query_ident(input: &Value, id: &str, silent: bool) -> Result<Vec<Value>, JQError> {
     match input {
         Value::Object(object) => query_object_ident(object, id),
-        _ => Ok(vec![input.to_owned()]),
+        _ => {
+            if silent {
+                let v: Vec<Value> = Vec::new();
+                return Ok(v);
+            }
+            Err(JQError::IdentMismatch(format!(
+                "cannot index {}",
+                value_name(input)
+            )))
+        }
     }
 }
 
@@ -160,7 +180,7 @@ fn query_single_token(inputs: &Vec<Value>, token: &Token) -> Result<Vec<Value>, 
     for input in inputs {
         let mut result = match token {
             Token::Identity => query_identity(input)?,
-            Token::Ident(ident) => query_ident(input, ident)?,
+            Token::Ident(ident, silent) => query_ident(input, ident, *silent)?,
             Token::Range(range) => query_range(input, range)?,
             Token::Index(index) => query_index(input, index)?,
         };
@@ -275,7 +295,10 @@ mod tests {
         let json = include_str!("../test/basic.json");
         let input: Value = serde_json::from_str(json).expect("Failed to parse");
 
-        let filter = vec![Token::Ident("object_1"), Token::Ident("elem_1")];
+        let filter = vec![
+            Token::Ident("object_1", false),
+            Token::Ident("elem_1", false),
+        ];
         let action = Action::Filter(filter);
         let block = Block {
             actions: Some(vec![action]),
@@ -295,10 +318,10 @@ mod tests {
         //let query_str = r#" .object_1 | .elem_1 "#;
         let blocks = vec![
             Block {
-                actions: Some(vec![Action::Filter(vec![Token::Ident("object_1")])]),
+                actions: Some(vec![Action::Filter(vec![Token::Ident("object_1", false)])]),
             },
             Block {
-                actions: Some(vec![Action::Filter(vec![Token::Ident("elem_1")])]),
+                actions: Some(vec![Action::Filter(vec![Token::Ident("elem_1", false)])]),
             },
         ];
 
@@ -313,7 +336,10 @@ mod tests {
         let json = include_str!("../test/basic.json");
         let input: Value = serde_json::from_str(json).expect("Failed to parse");
 
-        let filter = vec![Token::Ident("object_1"), Token::Ident("elem_1")];
+        let filter = vec![
+            Token::Ident("object_1", false),
+            Token::Ident("elem_1", false),
+        ];
         let action = Action::Filter(filter);
         let block = Block {
             actions: Some(vec![action]),
@@ -343,8 +369,8 @@ mod tests {
 
         let filter = vec![
             Token::Identity,
-            Token::Ident("object_1"),
-            Token::Ident("elem_1"),
+            Token::Ident("object_1", false),
+            Token::Ident("elem_1", false),
         ];
 
         let result = query_filter(&[input], &filter).expect("Failed query");
@@ -356,7 +382,10 @@ mod tests {
         let json = include_str!("../test/basic.json");
         let input: Value = serde_json::from_str(json).expect("Failed to parse");
 
-        let filter = vec![Token::Ident("object_1"), Token::Ident("elem_1")];
+        let filter = vec![
+            Token::Ident("object_1", false),
+            Token::Ident("elem_1", false),
+        ];
 
         let result = query_filter(&[input], &filter).expect("Failed query");
         assert_eq!(&result, &[json!("Object 1 Element 1")]);
