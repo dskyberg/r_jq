@@ -3,6 +3,7 @@ use std::io::{stdin, Read};
 use clap::Parser;
 use r_jq::jq;
 
+mod pretty_print;
 /*
   --tab            use tabs for indentation;
   --arg a v        set variable $a to value <v>;
