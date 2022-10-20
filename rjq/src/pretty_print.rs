@@ -96,11 +96,7 @@ impl PrettyPrint {
                     }
                 }
                 self.outdent();
-                if self.indent > 0 {
-                    print!("{}}}", self.fill(true));
-                } else {
-                    println!("{}}}", self.fill(true));
-                }
+                print!("{}}}", self.fill(true));
             }
         };
         Ok(())

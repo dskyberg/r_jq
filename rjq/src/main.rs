@@ -76,6 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for result in results {
         //let output = r_jq::serde_json::to_string_pretty(&result)?;
         let _ = pretty.print(&result, true);
+        println!();
     }
     Ok(())
 }
