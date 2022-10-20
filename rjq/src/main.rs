@@ -1,8 +1,8 @@
 use std::io::{stdin, Read};
 
 use clap::Parser;
+use pretty_print::*;
 use r_jq::jq;
-
 mod pretty_print;
 /*
   --tab            use tabs for indentation;
@@ -72,9 +72,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = stdin.read_to_end(&mut buffer)?;
 
     let results = jq(&buffer, &cli.query)?;
+    let mut pretty = PrettyPrint::new();
     for result in results {
-        let output = r_jq::serde_json::to_string_pretty(&result)?;
-        println!("{}", &output);
+        //let output = r_jq::serde_json::to_string_pretty(&result)?;
+        let _ = pretty.print(&result, true);
     }
     Ok(())
 }
