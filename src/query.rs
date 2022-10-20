@@ -32,10 +32,21 @@ pub fn query_object_index(
     object: &Map<String, Value>,
     idx: &IndexType,
 ) -> Result<Vec<Value>, JQError> {
-    Ok(vec![object
-        .get(idx.as_identifier()?)
-        .unwrap_or(&Value::Null)
-        .clone()])
+    let (index, silent) = idx.as_identifier()?;
+    let value = object.get(index);
+    match value {
+        Some(result) => Ok(vec![result.to_owned()]),
+        None => {
+            if silent {
+                Ok(Vec::<Value>::new())
+            } else {
+                return Err(JQError::ObjectQuery(format!(
+                    "bad object index {:?}",
+                    &index
+                )));
+            }
+        }
+    }
 }
 
 /// Query an object with a Range token
@@ -65,33 +76,39 @@ fn query_object_range(
 /// This function can be called in path traversal.
 ///
 /// An error is returned if the value is not an array or the key is not an index.
-pub fn query_array_index(array: &Vec<Value>, index: &IndexType) -> Result<Vec<Value>, JQError> {
+pub fn query_array_index(array: &Vec<Value>, idx: &IndexType) -> Result<Vec<Value>, JQError> {
     let mut results: Vec<Value> = Vec::new();
-    let indexes = index.as_index()?;
+    let (indexes, _silent) = idx.as_index()?;
     for mut idx in indexes {
         // If idx is negative, pull from end of array
         if idx < 0 {
             idx += array.len() as isize;
         }
-        // If idx is out of bounds, return null
         if idx >= array.len() as isize {
+            // disregard silent.  Always push null.
+            // This mirrors jq behavior
             results.push(Value::Null);
             continue;
         }
-        results.push(array[idx as usize].clone());
+        results.push(array[idx as usize].to_owned())
     }
     Ok(results)
 }
 
 fn query_string_index(input: &str, index: &IndexType) -> Result<Vec<Value>, JQError> {
     let mut results: Vec<Value> = Vec::new();
-    let indexes = index.as_index()?;
+    let (indexes, silent) = index.as_index()?;
     for mut idx in indexes {
         if idx < 0 {
             idx += input.len() as isize;
         }
         if idx >= input.len() as isize {
-            results.push(Value::Null);
+            // idx is out of bounds
+            if silent {
+                continue;
+            } else {
+                return Err(JQError::ArrayQuery(format!("string index oob {}", idx)));
+            }
         }
         results.push(Value::from(
             input.get(idx as usize..idx as usize + 1).unwrap_or(""),
@@ -395,7 +412,7 @@ mod tests {
     fn test_filter_array_with_identity() {
         let input = json!([{"name":"JSON", "good":true}, {"name":"XML", "good":false}]);
 
-        let filter = vec![Token::Identity, Token::Index(IndexType::from(0))];
+        let filter = vec![Token::Identity, Token::Index(IndexType::from((0, false)))];
 
         let result = query_filter(&[input], &filter).expect("Failed query");
         //dbg!(&result);
@@ -414,7 +431,7 @@ mod tests {
     fn test_filter_array() {
         let input = json!([{"name":"JSON", "good":true}, {"name":"XML", "good":false}]);
 
-        let filter = vec![Token::Index(IndexType::from(0))];
+        let filter = vec![Token::Index(IndexType::from((0, false)))];
 
         let result = query_filter(&[input], &filter).expect("Failed query");
         //dbg!(&result);
@@ -449,10 +466,19 @@ mod tests {
     #[test]
     fn test_object_by_index() {
         let value = json!({"object_1":{"elem1":"element 1"}});
-        let index = IndexType::from("object_1");
+        let index = IndexType::from(("object_1", false));
         let result = query_object_index(value.as_object().unwrap(), &index).expect("query failed");
         // dbg!(&result);
         assert_eq!(result, vec![json!({"elem1":"element 1"})]);
+    }
+
+    #[test]
+    fn test_by_by_index_oob_silent() {
+        let value = json!(["0", "1", "2"]);
+        let index = IndexType::from((3, true));
+        let result = query_array_index(value.as_array().unwrap(), &index).expect("Failed");
+        //dbg!(&result);
+        assert_eq!(&result, &[json!(null)]);
     }
 
     #[test]
@@ -467,7 +493,7 @@ mod tests {
     #[test]
     fn test_array_by_index() {
         let value = json!(["0", "1", "2"]);
-        let index = IndexType::from(0);
+        let index = IndexType::from((0, false));
         let result = query_array_index(value.as_array().unwrap(), &index).expect("query failed");
         //dbg!(&result);
         assert_eq!(result, vec![json!("0")]);
@@ -476,7 +502,7 @@ mod tests {
     #[test]
     fn test_array_negative_index() {
         let value = json!(["0", "1", "2"]);
-        let index = IndexType::from(-2);
+        let index = IndexType::from((-2, false));
         let result = query_array_index(value.as_array().unwrap(), &index).expect("query failed");
         //dbg!(&result);
         assert_eq!(result, vec![json!("1")]);
@@ -485,10 +511,19 @@ mod tests {
     #[test]
     fn test_array_by_index_oob() {
         let value = json!(["0", "1", "2"]);
-        let index = IndexType::from(3);
-        let result = query_array_index(value.as_array().unwrap(), &index).expect("query failed");
+        let index = IndexType::from((3, false));
+        let result = query_array_index(value.as_array().unwrap(), &index).expect("Failed");
         //dbg!(&result);
-        assert_eq!(result, vec![json!(null)]);
+        assert_eq!(&result, &[json!(null)]);
+    }
+
+    #[test]
+    fn test_array_by_index_oob_silent() {
+        let value = json!(["0", "1", "2"]);
+        let index = IndexType::from((3, true));
+        let result = query_array_index(value.as_array().unwrap(), &index).expect("Failed");
+        //dbg!(&result);
+        assert_eq!(&result, &[json!(null)]);
     }
 
     #[test]

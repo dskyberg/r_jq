@@ -45,9 +45,9 @@ peg::parser!( grammar query_parser() for str {
     /// Note: an empty set of brackets: `[]` is a range, not an index.
     pub rule index() -> Token<'input>
         = precedence! {
-            _ "[" _ i:string() _ "]" _ {Token::Index(IndexType::from(i))}
+            _ "[" _ i:string() _ "]" b:"?"?_ {Token::Index(IndexType::from((i, b.is_some())))}
             --
-            _ "[" _ n:number_list() _ "]" _ {Token::Index(IndexType::from(n))}
+            _ "[" _ n:number_list() _ "]" b:"?"? _ {Token::Index(IndexType::from((n, b.is_some())))}
         }
 
     pub rule identifier() -> Token<'input>
@@ -256,7 +256,7 @@ mod tests {
             query_parser::filter(r#".["a"].b"#),
             Ok(Action::Filter(vec![
                 Token::Identity,
-                Token::Index(IndexType::from("a")),
+                Token::Index(IndexType::from(("a", false))),
                 Token::Ident("b", false)
             ]))
         );
@@ -272,12 +272,12 @@ mod tests {
 
         assert_eq!(
             query_parser::key(r#"["a"]"#),
-            Ok(Token::Index(IndexType::from("a")))
+            Ok(Token::Index(IndexType::from(("a", false))))
         );
 
         assert_eq!(
             query_parser::key(r#"[2]"#),
-            Ok(Token::Index(IndexType::from(2)))
+            Ok(Token::Index(IndexType::from((2, false))))
         );
 
         assert_eq!(query_parser::key("[]"), Ok(Token::Range(RangeType::new())));
@@ -298,12 +298,12 @@ mod tests {
     fn test_identifier_index() {
         assert_eq!(
             query_parser::index(r#"["a"]"#),
-            Ok(Token::Index(IndexType::from("a")))
+            Ok(Token::Index(IndexType::from(("a", false))))
         );
 
         assert_eq!(
             query_parser::index(r#"[ "a" ]"#),
-            Ok(Token::Index(IndexType::from("a")))
+            Ok(Token::Index(IndexType::from(("a", false))))
         );
     }
 
@@ -311,17 +311,17 @@ mod tests {
     fn test_index_index() {
         assert_eq!(
             query_parser::index("[2]"),
-            Ok(Token::Index(IndexType::from(2)))
+            Ok(Token::Index(IndexType::from((2, false))))
         );
 
         assert_eq!(
             query_parser::index("[ 2]"),
-            Ok(Token::Index(IndexType::from(2)))
+            Ok(Token::Index(IndexType::from((2, false))))
         );
 
         assert_eq!(
             query_parser::index("[2 ]"),
-            Ok(Token::Index(IndexType::from(2)))
+            Ok(Token::Index(IndexType::from((2, false))))
         );
     }
 
@@ -329,7 +329,7 @@ mod tests {
     fn test_negative_index() {
         assert_eq!(
             query_parser::index("[-2]"),
-            Ok(Token::Index(IndexType::from(-2)))
+            Ok(Token::Index(IndexType::from((-2, false))))
         );
     }
 

@@ -6,6 +6,7 @@ use crate::JQError;
 pub struct IndexType<'a> {
     identifier: Option<&'a str>,
     index: Option<Vec<isize>>,
+    silent: bool,
 }
 
 impl<'a> IndexType<'a> {
@@ -33,45 +34,48 @@ impl<'a> IndexType<'a> {
     }
 
     /// Return the identifier
-    pub fn as_identifier(&self) -> Result<&str, JQError> {
+    pub fn as_identifier(&self) -> Result<(&str, bool), JQError> {
         match self.identifier {
-            Some(s) => Ok(s),
+            Some(s) => Ok((s, self.silent)),
             _ => Err(JQError::BadIndexType),
         }
     }
 
     /// Return the index
-    pub fn as_index(&self) -> Result<Vec<isize>, JQError> {
+    pub fn as_index(&self) -> Result<(Vec<isize>, bool), JQError> {
         match &self.index {
-            Some(index) => Ok(index.to_vec()),
+            Some(index) => Ok((index.to_vec(), self.silent)),
             _ => Err(JQError::BadIndexType),
         }
     }
 }
 
-impl<'a> From<&'a str> for IndexType<'a> {
-    fn from(id: &'a str) -> Self {
+impl<'a> From<(&'a str, bool)> for IndexType<'a> {
+    fn from(id: (&'a str, bool)) -> Self {
         Self {
-            identifier: Some(id),
+            identifier: Some(id.0),
             index: None,
+            silent: id.1,
         }
     }
 }
 
-impl<'a> From<isize> for IndexType<'a> {
-    fn from(index: isize) -> Self {
+impl<'a> From<(isize, bool)> for IndexType<'a> {
+    fn from(index: (isize, bool)) -> Self {
         Self {
             identifier: None,
-            index: Some(vec![index]),
+            index: Some(vec![index.0]),
+            silent: index.1,
         }
     }
 }
 
-impl<'a> From<Vec<isize>> for IndexType<'a> {
-    fn from(indexes: Vec<isize>) -> Self {
+impl<'a> From<(Vec<isize>, bool)> for IndexType<'a> {
+    fn from(indexes: (Vec<isize>, bool)) -> Self {
         Self {
             identifier: None,
-            index: Some(indexes),
+            index: Some(indexes.0),
+            silent: indexes.1,
         }
     }
 }

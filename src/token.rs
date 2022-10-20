@@ -65,7 +65,7 @@ impl<'a> From<&HasType<'a>> for Token<'a> {
         if has.is_ident() {
             return Token::Ident(has.as_ident().unwrap(), false);
         }
-        Token::Index(IndexType::from(has.as_index().unwrap()))
+        Token::Index(IndexType::from((has.as_index().unwrap(), false)))
     }
 }
 
@@ -95,6 +95,6 @@ mod tests {
         let has = HasType::from(0);
 
         let result = Token::try_from(&has).expect("failed");
-        assert_eq!(result, Token::Index(IndexType::from(0)));
+        assert_eq!(result, Token::Index(IndexType::from((0, false))));
     }
 }
