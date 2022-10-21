@@ -252,6 +252,10 @@ fn query_block(in_values: &Vec<Value>, block: Block) -> Result<Vec<Value>, JQErr
         };
         results.append(&mut next);
     }
+    if block.collect {
+        let collect = Value::from(results);
+        results = vec![collect];
+    }
     Ok(results)
 }
 
@@ -300,6 +304,7 @@ mod tests {
         let action = Action::Filter(filter);
         let block = Block {
             actions: Some(vec![action]),
+            collect: false,
         };
         let blocks = vec![block];
         let result = query(&[input.clone()], blocks).expect("Failed query");
@@ -319,6 +324,7 @@ mod tests {
         let action = Action::Filter(filter);
         let block = Block {
             actions: Some(vec![action]),
+            collect: false,
         };
         let blocks = vec![block];
 
@@ -336,9 +342,11 @@ mod tests {
         let blocks = vec![
             Block {
                 actions: Some(vec![Action::Filter(vec![Token::Ident("object_1", false)])]),
+                collect: false,
             },
             Block {
                 actions: Some(vec![Action::Filter(vec![Token::Ident("elem_1", false)])]),
+                collect: false,
             },
         ];
 
@@ -346,6 +354,20 @@ mod tests {
 
         //dbg!(&result);
         assert_eq!(&result, &[json!("Object 1 Element 1")]);
+    }
+
+    #[test]
+    fn test_collect_block() {
+        let json = json!([1, 2, 3]);
+        let filter = vec![Token::Identity, Token::Range(RangeType::new())];
+        let action = Action::Filter(filter);
+        let block = Block {
+            actions: Some(vec![action]),
+            collect: true,
+        };
+        let result = query_block(&vec![json], block).expect("Failed query");
+
+        dbg!(&result);
     }
 
     #[test]
@@ -360,6 +382,7 @@ mod tests {
         let action = Action::Filter(filter);
         let block = Block {
             actions: Some(vec![action]),
+            collect: false,
         };
 
         let result = query_block(&vec![input], block).expect("Failed query");

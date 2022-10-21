@@ -264,7 +264,18 @@ Booleans, null, strings and numbers are written the same way as in javascript.
 
 ## Array construction: `[]`
 
-Not yet.  Maybe never
+As in JSON, `[]` is used to construct arrays, as in `[1,2,3]`. The elements of the arrays can be any jq expression, including a pipeline. All of the results produced by all of the expressions are collected into one big array. You can use it to construct an array out of a known quantity of values (as in `[.foo, .bar, .baz]`) or to "collect" all the results of a filter into an array (as in `[.items[].name]`)
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"{"user":"stedolan", "projects": ["jq", "wikiflow"]}"#.as_bytes();
+let query_str = r#"[.user, .projects[]]"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(["stedolan", "jq", "wikiflow"])]);
+```
 
 ## Object Construction: {}
 

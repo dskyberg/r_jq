@@ -96,10 +96,17 @@ peg::parser!( grammar query_parser() for str {
     pub rule actions() -> Vec<Action<'input>>
     =  action() ++  ","
 
+    pub rule collect() -> Block<'input>
+        = _ "[" _ a:actions() _ "]" _ {
+            Block{actions: Some(a), collect: true}
+        }
+
     /// A block is either a set of filters or a command
     pub rule block() -> Block<'input>
-        = _ actions:actions() _ {
-            Block{actions: Some(actions)}
+        = precedence! {
+            _ actions:actions() _ {Block{actions: Some(actions),collect: false}}
+        --
+            collect: collect() {collect}
         }
 
     pub rule blocks() -> Vec<Block<'input>>
@@ -139,12 +146,14 @@ mod tests {
                         Action::Filter(vec![Token::Identity,],),
                         Action::Filter(vec![Token::Ident("b", false),],),
                     ],),
+                    collect: false,
                 },
                 Block {
                     actions: Some(vec![
                         Action::Filter(vec![Token::Identity,],),
                         Action::Filter(vec![Token::Ident("b", false),],),
                     ],),
+                    collect: false
                 },
             ])
         );
@@ -158,7 +167,8 @@ mod tests {
                 actions: Some(vec![
                     Action::Filter(vec![Token::Identity]),
                     Action::Function(Function::Length)
-                ])
+                ]),
+                collect: false
             })
         );
     }
@@ -168,7 +178,8 @@ mod tests {
         assert_eq!(
             query_parser::block(" length "),
             Ok(Block {
-                actions: Some(vec![Action::Function(Function::Length)])
+                actions: Some(vec![Action::Function(Function::Length)]),
+                collect: false,
             })
         );
     }
@@ -181,9 +192,17 @@ mod tests {
                 actions: Some(vec![
                     Action::Filter(vec![Token::Identity]),
                     Action::Filter(vec![Token::Ident("b", false)])
-                ])
-            })
+                ]),
+                collect: false
+            },)
         );
+    }
+
+    #[test]
+    fn test_block_collect() {
+        //let collect = query_parser::collect("[ .[] ]");
+        let collect = parse("[.[]]").expect("fail");
+        dbg!(&collect);
     }
 
     #[test]
@@ -191,7 +210,8 @@ mod tests {
         assert_eq!(
             query_parser::block(".b"),
             Ok(Block {
-                actions: Some(vec![Action::Filter(vec![Token::Ident("b", false)])])
+                actions: Some(vec![Action::Filter(vec![Token::Ident("b", false)])]),
+                collect: false
             })
         );
     }

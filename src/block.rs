@@ -6,12 +6,15 @@ use crate::Action;
 pub struct Block<'a> {
     /// Collection of [Action] to be processed
     pub actions: Option<Vec<Action<'a>>>,
+    /// Collect the action results in an array
+    pub collect: bool,
 }
 
 impl<'a> From<Action<'a>> for Block<'a> {
     fn from(action: Action<'a>) -> Self {
         Self {
             actions: Some(vec![action]),
+            collect: false,
         }
     }
 }
@@ -20,6 +23,7 @@ impl<'a> From<Vec<Action<'a>>> for Block<'a> {
     fn from(actions: Vec<Action<'a>>) -> Self {
         Self {
             actions: Some(actions),
+            collect: false,
         }
     }
 }
@@ -35,7 +39,8 @@ mod tests {
         assert_eq!(
             block,
             Block {
-                actions: Some(vec![Action::Filter(vec![Token::Identity])])
+                actions: Some(vec![Action::Filter(vec![Token::Identity])]),
+                collect: false,
             }
         );
     }
@@ -51,7 +56,8 @@ mod tests {
                 actions: Some(vec![
                     Action::Filter(vec![Token::Identity]),
                     Action::Filter(vec![Token::Ident("elem1", false)])
-                ])
+                ]),
+                collect: false
             }
         );
     }
