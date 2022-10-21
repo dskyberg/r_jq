@@ -1,7 +1,7 @@
 use crate::{Function, HasType, IndexType, JQError, RangeType};
 
 /// Tokens are the components in a Filter query
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Token<'a> {
     /// I`.`, represents the entire input
     Identity,

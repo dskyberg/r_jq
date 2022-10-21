@@ -2,7 +2,7 @@ use crate::JQError;
 
 /// Represents an identifier-index for objects and arrays. IndexType will have
 /// either an identifier or an index.
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct IndexType<'a> {
     identifier: Option<&'a str>,
     index: Option<Vec<isize>>,

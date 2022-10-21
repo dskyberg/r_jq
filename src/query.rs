@@ -40,10 +40,10 @@ pub fn query_object_index(
             if silent {
                 Ok(Vec::<Value>::new())
             } else {
-                return Err(JQError::ObjectQuery(format!(
+                Err(JQError::ObjectQuery(format!(
                     "bad object index {:?}",
                     &index
-                )));
+                )))
             }
         }
     }

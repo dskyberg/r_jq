@@ -16,7 +16,7 @@ pub mod recurse;
 pub mod keys;
 
 /// Represents a Function in the PEG parser
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Function<'a> {
     /// [fn_length]
     Length,

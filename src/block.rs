@@ -2,7 +2,7 @@ use crate::Action;
 
 /// A block represents a collection of [actions](Action), separated by a pipe
 /// `<action 1> | <action 2>`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block<'a> {
     /// Collection of [Action] to be processed
     pub actions: Option<Vec<Action<'a>>>,

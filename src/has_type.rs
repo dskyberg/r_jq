@@ -3,7 +3,7 @@ use crate::JQError;
 /// Input for  [Has](crate::Function::Has)
 ///
 /// Must have either an index or an ident.  Cannot have both.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HasType<'a> {
     index: Option<isize>,
     ident: Option<&'a str>,

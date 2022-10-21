@@ -8,7 +8,7 @@ use crate::{Function, JQError, Token};
 pub type Filter<'a> = Vec<Token<'a>>;
 
 /// An action is the fundamental component of a [Block](crate::Block)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Action<'a> {
     /// [Function]
     Function(Function<'a>),

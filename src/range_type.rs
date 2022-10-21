@@ -9,7 +9,7 @@ use crate::JQError;
 /// * `[isize:]` : returns all elements from stop to end of the array
 /// * `[:isize]`
 /// * `[:]`
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct RangeType {
     start: Option<isize>,
     end: Option<isize>,
