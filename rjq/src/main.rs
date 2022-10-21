@@ -53,6 +53,10 @@ pub struct Cli {
     #[clap(short = 'S', action, default_value_t = false)]
     sort: bool,
 
+    /// use tabs for indentation;
+    #[clap(long, action, default_value_t = false)]
+    tab: bool,
+
     /// display the curren verion
     #[clap(short, long)]
     version: bool,
@@ -72,11 +76,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = stdin.read_to_end(&mut buffer)?;
 
     let results = jq(&buffer, &cli.query)?;
-    let mut pretty = PrettyPrint::new();
+    let mut pretty = PrettyPrint::new()
+        .with_compact(cli.compact)
+        .with_use_tabs(cli.tab);
+
     for result in results {
+        match &result {
+            r_jq::serde_json::Value::String(s) => {
+                if cli.raw_out {
+                    print!("{}", s);
+                } else {
+                    let _ = pretty.print(&result, true);
+                }
+            }
+            _ => {
+                let _ = pretty.print(&result, true);
+            }
+        }
         //let output = r_jq::serde_json::to_string_pretty(&result)?;
-        let _ = pretty.print(&result, true);
-        println!();
+        if !cli.compact {
+            println!();
+        }
     }
     Ok(())
 }

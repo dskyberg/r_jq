@@ -3,9 +3,10 @@ use colored::Colorize;
 use r_jq::serde_json::Value;
 
 pub struct PrettyPrint {
+    use_tabs: bool,
+    compact: bool,
     tab_size: usize,
     indent: usize,
-    _raw: bool,
 }
 
 impl Default for PrettyPrint {
@@ -17,29 +18,39 @@ impl Default for PrettyPrint {
 impl PrettyPrint {
     pub fn new() -> Self {
         Self {
+            use_tabs: false,
+            compact: false,
             tab_size: 3,
             indent: 0,
-            _raw: false,
         }
     }
 
-    pub fn indent(&mut self) -> &mut Self {
+    pub fn indent(&mut self) {
         self.indent += 1;
-        self
     }
-    pub fn outdent(&mut self) -> &mut Self {
+    pub fn outdent(&mut self) {
         if self.indent > 0 {
             self.indent -= 1;
         }
-        self
     }
-    pub fn _set_raw(&mut self, raw: bool) -> &mut Self {
-        self._raw = raw;
+
+    pub fn with_use_tabs(mut self, use_tabs: bool) -> Self {
+        self.use_tabs = use_tabs;
         self
     }
 
+    pub fn with_compact(mut self, compact: bool) -> Self {
+        self.compact = compact;
+        self
+    }
     pub fn spaces(&self) -> usize {
-        self.indent * self.tab_size
+        if self.compact {
+            0
+        } else if self.use_tabs {
+            self.indent
+        } else {
+            self.indent * self.tab_size
+        }
     }
 
     pub fn fill(&self, indent: bool) -> String {
@@ -49,10 +60,22 @@ impl PrettyPrint {
 
         let mut result = String::new();
         for _s in 0..self.spaces() {
-            result.push(' ');
+            if self.use_tabs {
+                result.push('\t');
+            } else {
+                result.push(' ');
+            }
         }
 
         result
+    }
+
+    pub fn newline(&self) -> String {
+        if self.compact {
+            "".to_string()
+        } else {
+            "\n".to_string()
+        }
     }
 
     pub fn print(&mut self, value: &Value, indent: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -64,24 +87,24 @@ impl PrettyPrint {
                 print!("{}{}", self.fill(indent), &b)
             }
             Value::Number(n) => print!("{}{}", self.fill(indent), &n),
-            Value::String(s) => print!("{}{}", self.fill(indent), s.as_str().green()),
+            Value::String(s) => print!("{}\"{}\"", self.fill(indent), s.as_str().green()),
             Value::Array(array) => {
-                println!("[");
+                print!("[{}", self.newline());
                 self.indent();
                 for idx in 0..array.len() {
                     let v = &array[idx];
                     self.print(v, true)?;
                     if idx < array.len() - 1 {
-                        println!(",");
+                        print!(",{}", self.newline());
                     } else {
-                        println!();
+                        print!("{}", self.newline());
                     }
                 }
                 self.outdent();
                 print!("{}]", self.fill(true));
             }
             Value::Object(m) => {
-                println!("{{");
+                print!("{{{}", self.newline());
                 self.indent();
                 let keys = m.keys().collect::<Vec<&String>>();
                 for idx in 0..keys.len() {
@@ -90,9 +113,9 @@ impl PrettyPrint {
                     print!("{}\"{}\": ", self.fill(true), key.blue());
                     self.print(value, false)?;
                     if idx < keys.len() - 1 {
-                        println!(",");
+                        print!(",{}", self.newline());
                     } else {
-                        println!();
+                        print!("{}", self.newline());
                     }
                 }
                 self.outdent();
