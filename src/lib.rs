@@ -41,6 +41,11 @@ pub fn jq(json: &[u8], query_str: &str) -> Result<Vec<Value>, JQError> {
     query(&[value], blocks)
 }
 
+/// In case you are already dealiing with a serde_json::Value, use this
+pub fn jq_from_value(value: &Value, query_str: &str) -> Result<Vec<Value>, JQError> {
+    let blocks = parse(query_str)?;
+    query(&[value.to_owned()], blocks)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
