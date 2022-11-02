@@ -7,10 +7,13 @@ use crate::{Action, Block, Function, HasType, IndexType, JQError, RangeType, Tok
 peg::parser!( grammar query_parser() for str {
     rule _ = [' ' | '\t']*
 
-    /// Decimal number
-    pub rule number() -> isize = n:$(['+' | '-']? ("0" / [ '0'..='9']+)) {n.parse().unwrap()}
 
-    pub rule number_list() -> Vec<isize>
+    /// floating point number
+    pub rule number() -> f64 = n:$(['+' | '-']? [ '0'..='9']+ ['.']? ['0'..='9']*) {n.parse().unwrap()}
+    /// Decimal number
+    //pub rule number() -> isize = n:$(['+' | '-']? ("0" / [ '0'..='9']+)) {n.parse().unwrap()}
+
+    pub rule number_list() -> Vec<f64>
     =  number() ++  ","
 
     /// An identifier
@@ -33,11 +36,11 @@ peg::parser!( grammar query_parser() for str {
         = precedence!{
             _ "[" _ "]" _ {Token::Range(RangeType::new())}
             --
-           _ "[" _ start:number() _ ":" _ "]" _ { Token::Range(RangeType::from_start(start)) }
+           _ "[" _ start:number() _ ":" _ "]" _ { Token::Range(RangeType::from_start(start as isize)) }
            --
-           _ "[" _ ":" _ end:number() _ "]" _ { Token::Range(RangeType::from_end(end)) }
+           _ "[" _ ":" _ end:number() _ "]" _ { Token::Range(RangeType::from_end(end as isize)) }
            --
-           _ "[" _ start:number() _  ":" _ end:number() _ "]" _ { Token::Range(RangeType::from_both(start,end)) }
+           _ "[" _ start:number() _  ":" _ end:number() _ "]" _ { Token::Range(RangeType::from_both(start as isize,end as isize)) }
 
         }
 
@@ -47,7 +50,10 @@ peg::parser!( grammar query_parser() for str {
         = precedence! {
             _ "[" _ i:string() _ "]" b:"?"?_ {Token::Index(IndexType::from((i, b.is_some())))}
             --
-            _ "[" _ n:number_list() _ "]" b:"?"? _ {Token::Index(IndexType::from((n, b.is_some())))}
+            _ "[" _ n:number_list() _ "]" b:"?"? _ {
+                let list: Vec<isize> = n.iter().map(|f| *f as isize).collect();
+                Token::Index(IndexType::from((list, b.is_some())))
+            }
         }
 
     pub rule identifier() -> Token<'input>
@@ -73,7 +79,7 @@ peg::parser!( grammar query_parser() for str {
         = precedence!{
            _ "has(" _ ident:string() _ ")" _ { Action::Function(Function::Has(HasType::from(ident)))}
             --
-           _ "has(" _ index:number() _ ")" _ { Action::Function(Function::Has(HasType::from(index)))}
+           _ "has(" _ index:number() _ ")" _ { Action::Function(Function::Has(HasType::from(index as isize)))}
         }
 
     pub rule recurse() -> Action<'input>
@@ -443,11 +449,13 @@ mod tests {
 
     #[test]
     fn test_numbers() {
-        assert_eq!(query_parser::number("0"), Ok(0));
-        assert!(query_parser::number("01").is_err());
-        assert_eq!(query_parser::number("123"), Ok(123));
-        assert_eq!(query_parser::number("+123"), Ok(123));
-        assert_eq!(query_parser::number("-123"), Ok(-123));
+        assert_eq!(query_parser::number("0"), Ok(0.0));
+        assert_eq!(query_parser::number("123"), Ok(123.0));
+        assert_eq!(query_parser::number("+123"), Ok(123.0));
+        assert_eq!(query_parser::number("-123"), Ok(-123.0));
+        assert_eq!(query_parser::number("01"), Ok(01.0));
+        assert_eq!(query_parser::number("01.01"), Ok(1.01));
+        assert_eq!(query_parser::number("-01.01"), Ok(-1.01));
         assert!(query_parser::number("+").is_err());
         assert!(query_parser::number("-").is_err());
         assert!(query_parser::number("123+").is_err());
