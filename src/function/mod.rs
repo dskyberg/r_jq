@@ -1,8 +1,10 @@
 use crate::HasType;
+pub use evaluate::*;
 pub use has::*;
 pub use keys::*;
 pub use length::*;
 pub use recurse::*;
+pub use select::*;
 
 /// `has`
 pub mod has;
@@ -14,6 +16,12 @@ pub mod recurse;
 
 /// `keys`
 pub mod keys;
+
+/// `select`
+pub mod select;
+
+/// `evaluate`
+pub mod evaluate;
 
 /// Represents a Function in the PEG parser
 #[derive(Clone, Debug, PartialEq, Eq)]

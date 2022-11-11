@@ -2,19 +2,18 @@
 ///
 /// This module contains the PEG parser for parsing JQ query strings.
 ///
-use crate::{Action, Block, Function, HasType, IndexType, JQError, RangeType, Token};
+use crate::{Action, Block, Function, HasType, IndexType, JQError, Operator, RangeType, Token};
 
 peg::parser!( grammar query_parser() for str {
     rule _ = [' ' | '\t']*
 
-
     /// floating point number
     pub rule number() -> f64 = n:$(['+' | '-']? [ '0'..='9']+ ['.']? ['0'..='9']*) {n.parse().unwrap()}
-    /// Decimal number
-    //pub rule number() -> isize = n:$(['+' | '-']? ("0" / [ '0'..='9']+)) {n.parse().unwrap()}
 
-    pub rule number_list() -> Vec<f64>
-    =  number() ++  ","
+    pub rule number_list() -> Vec<f64> =  number() ++  ","
+
+    pub rule operator() -> Operator
+        = s:$( ">=" / "<=" / "+" / "-" / "*" / "/" / "<" / ">" / "!=" / "==") {Operator::try_from(s).expect("failed")}
 
     /// An identifier
     /// Must strt with an alpha character.  Can contain alphanumeric and '_'
@@ -82,6 +81,12 @@ peg::parser!( grammar query_parser() for str {
            _ "has(" _ index:number() _ ")" _ { Action::Function(Function::Has(HasType::from(index as isize)))}
         }
 
+    pub rule boolean_expression() 
+        = _ k1:key() _ operator() _ k2:key()
+
+    pub rule select()
+        = _ "select(" _ s1:string() _ o:operator() _  s2:string() _ ")" _
+
     pub rule recurse() -> Action<'input>
         = precedence!{
              _ ".." _ {Action::Function(Function::Recurse)}
@@ -132,14 +137,36 @@ mod tests {
 
     #[test]
     fn test_recurse() {
-        let query = parse(r#".[] | .."#).expect("Failed");
-        dbg!(&query);
+        let result = parse(r#".[] | .."#).expect("Failed");
+        let query = vec![
+            Block {
+                actions: Some(vec![Action::Filter(vec![
+                    Token::Identity,
+                    Token::Range(RangeType::new()),
+                ])]),
+                collect: false,
+            },
+            Block {
+                actions: Some(vec![Action::Function(Function::Recurse)]),
+                collect: false,
+            },
+        ];
+        assert_eq!(result, query);
     }
 
     #[test]
     fn test_identity_to_array() {
         let query = query_parser::block(".[]");
-        dbg!(&query);
+        assert_eq!(
+            query,
+            Ok(Block {
+                actions: Some(vec![Action::Filter(vec![
+                    Token::Identity,
+                    Token::Range(RangeType::new()),
+                ])]),
+                collect: false,
+            })
+        )
     }
 
     #[test]
@@ -207,8 +234,15 @@ mod tests {
     #[test]
     fn test_block_collect() {
         //let collect = query_parser::collect("[ .[] ]");
-        let collect = parse("[.[]]").expect("fail");
-        dbg!(&collect);
+        let result = parse("[.[]]").expect("fail");
+        let collect = vec![Block {
+            actions: Some(vec![Action::Filter(vec![
+                Token::Identity,
+                Token::Range(RangeType::new()),
+            ])]),
+            collect: true,
+        }];
+        assert_eq!(result, collect);
     }
 
     #[test]
@@ -220,6 +254,12 @@ mod tests {
                 collect: false
             })
         );
+    }
+
+    #[test]
+    fn test_select() {
+        let result = query_parser::select(r#"select("a" != "a")"#);
+        dbg!(&result);
     }
 
     #[test]
@@ -445,6 +485,15 @@ mod tests {
         assert_eq!(query_parser::string(r#""abc""#), Ok("abc"));
         assert_eq!(query_parser::string(r#""a 1_bc""#), Ok("a 1_bc"));
         assert_eq!(query_parser::string(r#"" a 1_bc ""#), Ok(" a 1_bc "));
+    }
+
+    #[test]
+    fn test_operators() {
+        assert_eq!(query_parser::operator("+"), Ok(Operator::Plus));
+        assert_eq!(query_parser::operator("=="), Ok(Operator::Equal));
+        assert_eq!(query_parser::operator("!="), Ok(Operator::NotEqual));
+        assert_eq!(query_parser::operator(">="), Ok(Operator::Gte));
+        assert_eq!(query_parser::operator("<="), Ok(Operator::Lte));
     }
 
     #[test]

@@ -3,14 +3,14 @@
 use action::*;
 use block::*;
 use errors::*;
+pub use eval::*;
 use function::*;
-use has_type::*;
-use index_type::*;
 use jq_peg::*;
+pub use operator::*;
 use query::*;
-use range_type::*;
 pub use serde_json;
 use token::*;
+pub use types::*;
 
 use serde_json::Value;
 /// Contains Action
@@ -21,18 +21,19 @@ pub mod block;
 pub mod errors;
 /// Contains Function
 pub mod function;
-/// Contains HasType
-pub mod has_type;
-/// Contains IndexType
-pub mod index_type;
 #[doc(hidden)]
 pub mod jq_peg;
 /// Contains the query functions
 pub mod query;
-/// Contains RangeType
-pub mod range_type;
 /// Contains Token
 pub mod token;
+
+///eval
+pub mod eval;
+/// Operator
+pub mod operator;
+/// types
+pub mod types;
 
 /// This is the function that users of the r_jq library will call.
 pub fn jq(json: &[u8], query_str: &str) -> Result<Vec<Value>, JQError> {

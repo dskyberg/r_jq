@@ -64,4 +64,7 @@ pub enum JQError {
     ///
     #[error("{0}")]
     IdentMismatch(String),
+    ///
+    #[error("EquationError: {0}")]
+    EquationError(String),
 }
