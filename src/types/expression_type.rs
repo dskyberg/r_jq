@@ -1,12 +1,14 @@
-use crate::{AtomType, Operator};
+use crate::{Operator, Token};
 
-/// Represents an expression such as `l == r`
-#[derive(Clone, Debug, PartialEq)]
-pub struct ExpressionType<'a> {
+///
+#[derive(Clone, PartialEq, Debug)]
+pub enum ExpressionType<'a> {
     ///
-    pub left: AtomType<'a>,
+    Number(f64),
     ///
-    pub operator: Operator,
+    String(&'a str),
     ///
-    pub right: AtomType<'a>,
+    Ident(Token<'a>),
+    ///
+    Op(Operator, Box<ExpressionType<'a>>, Box<ExpressionType<'a>>),
 }

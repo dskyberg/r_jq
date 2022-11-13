@@ -2,18 +2,46 @@
 ///
 /// This module contains the PEG parser for parsing JQ query strings.
 ///
-use crate::{Action, Block, Function, HasType, IndexType, JQError, Operator, RangeType, Token};
+use crate::{
+    Action, Block, ExpressionType, Function, HasType, IndexType, JQError, Operator, RangeType,
+    Token,
+};
 
 peg::parser!( grammar query_parser() for str {
     rule _ = [' ' | '\t']*
 
-    /// floating point number
+    /// floating point number4
     pub rule number() -> f64 = n:$(['+' | '-']? [ '0'..='9']+ ['.']? ['0'..='9']*) {n.parse().unwrap()}
 
     pub rule number_list() -> Vec<f64> =  number() ++  ","
 
+
     pub rule operator() -> Operator
         = s:$( ">=" / "<=" / "+" / "-" / "*" / "/" / "<" / ">" / "!=" / "==") {Operator::try_from(s).expect("failed")}
+
+    rule sum_ops() -> Operator = s:$("+" / "-"/ "<" / ">" / "!=" / "==" / ">=" / "<=" )  {Operator::try_from(s).expect("failed")}
+    rule mult_ops() -> Operator = s:$("*" / "/") {Operator::try_from(s).expect("failed")}
+
+    pub rule expression() -> ExpressionType<'input>
+        = sum()
+
+    rule sum() -> ExpressionType<'input>
+        = l:product() _ o:sum_ops() _ r:product() { ExpressionType::Op(o, Box::new(l), Box::new(r)) }
+        / product()
+
+    rule product() -> ExpressionType<'input>
+        = l:atom() _ o:mult_ops() _ r:atom() { ExpressionType::Op(o, Box::new(l), Box::new(r)) }
+        / atom()
+
+    rule atom() -> ExpressionType<'input>
+        = number_exp()
+        / string_exp()
+        / i:ident_exp()
+        / "(" _ v:sum() _ ")" { v }
+
+    rule ident_exp() ->  ExpressionType<'input> = k:key()    { ExpressionType::Ident(k)}
+    rule string_exp() -> ExpressionType<'input> = s:string() { ExpressionType::String(s)}
+    rule number_exp() -> ExpressionType<'input> = n:number() { ExpressionType::Number(n) }
 
     /// An identifier
     /// Must strt with an alpha character.  Can contain alphanumeric and '_'
@@ -81,9 +109,6 @@ peg::parser!( grammar query_parser() for str {
            _ "has(" _ index:number() _ ")" _ { Action::Function(Function::Has(HasType::from(index as isize)))}
         }
 
-    pub rule boolean_expression() 
-        = _ k1:key() _ operator() _ k2:key()
-
     pub rule select()
         = _ "select(" _ s1:string() _ o:operator() _  s2:string() _ ")" _
 
@@ -101,8 +126,11 @@ peg::parser!( grammar query_parser() for str {
     pub rule function() -> Action<'input>
     = length() / has() / recurse() / keys()
 
+    pub rule expr() -> Action<'input>
+    = e:expression() {Action::Expression(e)}
+
     pub rule action() -> Action<'input>
-        = filter() / function()
+        = filter() / function() / expr()
 
     pub rule actions() -> Vec<Action<'input>>
     =  action() ++  ","
@@ -134,6 +162,12 @@ pub fn parse(input: &str) -> Result<Vec<Block>, JQError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_expresion() {
+        let result = parse(r#"(.a + 2)"#);
+        dbg!(&result);
+    }
 
     #[test]
     fn test_recurse() {

@@ -2,18 +2,20 @@
 /// can be executed within a block.  A collection of Actions
 /// can be sequentially processed to both filter and transform
 /// input.
-use crate::{Function, JQError, Token};
+use crate::{ExpressionType, Function, JQError, Token};
 
 /// A Filter is just a collection of Tokens
 pub type Filter<'a> = Vec<Token<'a>>;
 
 /// An action is the fundamental component of a [Block](crate::Block)
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Action<'a> {
     /// [Function]
     Function(Function<'a>),
     /// [Filter]
     Filter(Filter<'a>),
+    ///
+    Expression(ExpressionType<'a>),
 }
 
 impl<'a> Action<'a> {

@@ -1,13 +1,12 @@
 // `select` function
 ///
-use serde_json::json;
-
+//use serde_json::json;
 use crate::{
-    eval::*, query_ident, query_identity, query_index, query_range, AtomType, ExpressionType,
-    JQError, Operator, Token, Value,
+    eval::*, query_ident, query_identity, query_index, query_range, ExpressionType, JQError,
+    Operator, Token, Value,
 };
 
-fn get_value_from_token(input: &Value, token: &Token) -> Result<Value, JQError> {
+fn evaluate_token(input: &Value, token: &Token) -> Result<Value, JQError> {
     let value = match token {
         Token::Identity => query_identity(input),
         Token::Ident(ident, silent) => query_ident(input, ident, *silent),
@@ -23,43 +22,68 @@ fn get_value_from_token(input: &Value, token: &Token) -> Result<Value, JQError> 
     Ok(value[0].to_owned())
 }
 
-fn reduce(input: &Value, atom: &AtomType) -> Result<Value, JQError> {
-    let result = match atom {
-        AtomType::String(s) => Value::String(s.to_string()),
-        AtomType::Number(n) => json!(n),
-        AtomType::Token(token) => get_value_from_token(input, token)?,
-        AtomType::Expression(expr) => evaluate(input, expr)?,
-    };
-    Ok(result)
-}
-
-///
-pub fn evaluate(input: &Value, expr: &ExpressionType) -> Result<Value, JQError> {
-    // Recursively resolve left and right expressions
-    let mut left = reduce(input, &expr.left)?;
-    let right = reduce(input, &expr.right)?;
-
-    match expr.operator {
+fn eval_op(op: &Operator, left: Value, right: Value) -> Result<Value, JQError> {
+    match op {
         Operator::Plus => add_value(&left, &right),
         Operator::Minus => subtract_value(&left, &right),
-        Operator::Multiply => todo!(),
-        Operator::Divide => todo!(),
-        Operator::Equal => equate_value(&left, &right, false),
-        Operator::NotEqual => equate_value(&left, &right, true),
-        Operator::Gt => todo!(),
-        Operator::Lt => todo!(),
-        Operator::Gte => todo!(),
-        Operator::Lte => todo!(),
+        Operator::Multiply => multiply_value(&left, &right),
+        Operator::Divide => divide_value(&left, &right),
+        _ => equality_value(op, &left, &right),
+    }
+}
+
+fn eval(input: &Value, expr: &ExpressionType) -> Result<Value, JQError> {
+    match expr {
+        ExpressionType::Number(n) => Ok(Value::from(*n)),
+        ExpressionType::String(s) => Ok(Value::from(*s)),
+        ExpressionType::Ident(token) => evaluate_token(input, token),
+        ExpressionType::Op(op, l, r) => eval_op(op, eval(input, l)?, eval(input, r)?),
     }
 }
 
 /// Returns boolean if the input includes the element
 pub fn fn_evaluate<'a>(
     inputs: &Vec<Value>,
-    _expression: &ExpressionType<'a>,
+    expr: &ExpressionType<'a>,
 ) -> Result<Vec<Value>, JQError> {
     let mut results: Vec<Value> = Vec::new();
 
-    for _input in inputs {}
+    for input in inputs {
+        let result = eval(input, expr)?;
+        results.push(result);
+    }
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{action::Action, jq_peg::parse};
+    use serde_json::json;
+
+    fn parse_expr(qs: &str) -> ExpressionType {
+        let query = parse(qs).expect("Parse failed");
+        let expr = match &query
+            .get(0)
+            .unwrap()
+            .actions
+            .as_ref()
+            .unwrap()
+            .get(0)
+            .unwrap()
+            .to_owned()
+        {
+            Action::Expression(expr) => expr.to_owned(),
+            _ => todo!(),
+        };
+        expr
+    }
+
+    #[test]
+    fn test_add() {
+        let expr = parse_expr(r#"(.a == 2)"#);
+        let inputs = vec![json!({"a": 2})];
+        let results = fn_evaluate(&inputs, &expr);
+        dbg!(&results);
+    }
 }

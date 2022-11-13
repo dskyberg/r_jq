@@ -1,7 +1,7 @@
 use super::Value;
 use crate::{
-    fn_has, fn_keys, fn_length, fn_recurse, from_range, Action, Block, Filter, Function, IndexType,
-    JQError, RangeType, Token,
+    fn_has, fn_keys, fn_length, fn_recurse, from_range, Action, Block, ExpressionType, Filter,
+    Function, IndexType, JQError, RangeType, Token,
 };
 use serde_json::Map;
 
@@ -239,6 +239,10 @@ fn query_function(inputs: &Vec<Value>, func: Function) -> Result<Vec<Value>, JQE
     Ok(output)
 }
 
+fn query_expression(inputs: &Vec<Value>, expr: &ExpressionType) -> Result<Vec<Value>, JQError> {
+    crate::fn_evaluate(inputs, expr)
+}
+
 /// Process all the actions in a block and return the results
 fn query_block(in_values: &Vec<Value>, block: Block) -> Result<Vec<Value>, JQError> {
     let mut results: Vec<Value> = Vec::new();
@@ -249,6 +253,7 @@ fn query_block(in_values: &Vec<Value>, block: Block) -> Result<Vec<Value>, JQErr
         let mut next = match action {
             Action::Filter(filter) => query_filter(in_values, &filter)?,
             Action::Function(func) => query_function(in_values, func)?,
+            Action::Expression(expr) => query_expression(in_values, &expr)?,
         };
         results.append(&mut next);
     }
