@@ -141,7 +141,7 @@ pub fn add_value(left: &Value, right: &Value) -> Result<Value, JQError> {
     match left {
         Value::Number(_) => add_number(left, right),
         Value::String(_) => add_string(left, right),
-        Value::Array(_) => add_string(left, right),
+        Value::Array(_) => add_array(left, right),
         Value::Object(_) => add_object(left, right),
         Value::Bool(_) => add_bool(left, right),
         Value::Null => add_null(left, right),

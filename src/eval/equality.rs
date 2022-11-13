@@ -4,204 +4,154 @@ fn fn_equal(left: &Value, right: &Value) -> Result<bool, JQError> {
     match left {
         Value::Null => match right {
             Value::Null => Ok(true),
-            _ => Err(JQError::EquationError(
-                "Cannot equate null and non-null".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::Bool(b) => match right {
             Value::Bool(bb) => Ok(b == bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate bool and non-bool".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::Number(b) => match right {
             Value::Number(bb) => Ok(b == bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate number and non-number".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::String(b) => match right {
             Value::String(bb) => Ok(b == bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate String and non-String".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::Array(b) => match right {
             Value::Array(bb) => Ok(b == bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Array and non-Array".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::Object(b) => match right {
             Value::Object(bb) => Ok(b == bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Object and non-Object".to_string(),
-            )),
+            _ => Ok(false),
         },
     }
 }
 
 fn fn_not_equal(left: &Value, right: &Value) -> Result<bool, JQError> {
     match left {
-        Value::Null => Err(JQError::EquationError("Cannot not-equate null".to_string())),
+        Value::Null => match right {
+            Value::Null => Ok(false),
+            _ => Ok(true),
+        },
         Value::Bool(b) => match right {
             Value::Bool(bb) => Ok(b != bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate bool and non-bool".to_string(),
-            )),
+            _ => Ok(true),
         },
         Value::Number(b) => match right {
             Value::Number(bb) => Ok(b != bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate number and non-number".to_string(),
-            )),
+            _ => Ok(true),
         },
         Value::String(b) => match right {
             Value::String(bb) => Ok(b != bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate String and non-String".to_string(),
-            )),
+            _ => Ok(true),
         },
         Value::Array(b) => match right {
             Value::Array(bb) => Ok(b != bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Array and non-Array".to_string(),
-            )),
+            _ => Ok(true),
         },
         Value::Object(b) => match right {
             Value::Object(bb) => Ok(b != bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Object and non-Object".to_string(),
-            )),
+            _ => Ok(true),
         },
     }
 }
 
 fn fn_gt(left: &Value, right: &Value) -> Result<bool, JQError> {
     match left {
-        Value::Null => Err(JQError::EquationError(
-            "Null cannot be greater than Null".to_string(),
-        )),
-        Value::Bool(_) => Err(JQError::EquationError(
-            "Boolean cannot be greater than Boolean".to_string(),
-        )),
-        Value::Number(b) => match right {
-            Value::Number(bb) => Ok(b.as_f64().unwrap() > bb.as_f64().unwrap()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate number and non-number".to_string(),
-            )),
+        Value::Null => Ok(false),
+        Value::Bool(b) => match right {
+            Value::Bool(bb) => Ok(*b & !(*bb)),
+            _ => Ok(false),
+        },
+        Value::Number(n) => match right {
+            Value::Number(nn) => Ok(n.as_f64().unwrap() > nn.as_f64().unwrap()),
+            Value::Bool(_) => Ok(true),
+            _ => Ok(false),
         },
         Value::String(b) => match right {
             Value::String(bb) => Ok(b > bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate String and non-String".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::Array(b) => match right {
             Value::Array(bb) => Ok(b.len() > bb.len()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Array and non-Array".to_string(),
-            )),
+            _ => Ok(false),
         },
-        Value::Object(_) => Err(JQError::EquationError(
-            "Object cannot be greater than Object".to_string(),
-        )),
+        Value::Object(_) => Ok(false),
     }
 }
 
 fn fn_lt(left: &Value, right: &Value) -> Result<bool, JQError> {
     match left {
-        Value::Null => Err(JQError::EquationError(
-            "Null cannot be less than Null".to_string(),
-        )),
-        Value::Bool(_) => Err(JQError::EquationError(
-            "Boolean cannot be greater than Boolean".to_string(),
-        )),
-        Value::Number(b) => match right {
-            Value::Number(bb) => Ok(b.as_f64().unwrap() < bb.as_f64().unwrap()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate number and non-number".to_string(),
-            )),
+        Value::Null => match right {
+            Value::Null => Ok(false),
+            _ => Ok(true),
+        },
+        Value::Bool(b) => match right {
+            Value::Bool(bb) => Ok(!(*b) & *bb),
+            _ => Ok(false),
+        },
+        Value::Number(n) => match right {
+            Value::Number(nn) => Ok(n.as_f64().unwrap() < nn.as_f64().unwrap()),
+            _ => Ok(false),
         },
         Value::String(b) => match right {
             Value::String(bb) => Ok(b < bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate String and non-String".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::Array(b) => match right {
             Value::Array(bb) => Ok(b.len() < bb.len()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Array and non-Array".to_string(),
-            )),
+            _ => Ok(false),
         },
-        Value::Object(_) => Err(JQError::EquationError(
-            "Object cannot be greater than Object".to_string(),
-        )),
+        Value::Object(_) => Ok(false),
     }
 }
 
 fn fn_gte(left: &Value, right: &Value) -> Result<bool, JQError> {
     match left {
-        Value::Null => Err(JQError::EquationError(
-            "Null cannot be greater than or equal to Null".to_string(),
-        )),
-        Value::Bool(_) => Err(JQError::EquationError(
-            "Boolean cannot be greater than or equal to Boolean".to_string(),
-        )),
-        Value::Number(b) => match right {
-            Value::Number(bb) => Ok(b.as_f64().unwrap() >= bb.as_f64().unwrap()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate number and non-number".to_string(),
-            )),
+        Value::Null => Ok(true),
+        Value::Bool(b) => match right {
+            Value::Bool(bb) => Ok(*b >= *bb),
+            _ => Ok(false),
+        },
+        Value::Number(n) => match right {
+            Value::Number(nn) => Ok(n.as_f64().unwrap() >= nn.as_f64().unwrap()),
+            Value::Bool(_) => Ok(true),
+            _ => Ok(false),
         },
         Value::String(b) => match right {
             Value::String(bb) => Ok(b >= bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate String and non-String".to_string(),
-            )),
+            _ => Ok(false),
         },
         Value::Array(b) => match right {
             Value::Array(bb) => Ok(b.len() >= bb.len()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Array and non-Array".to_string(),
-            )),
+            _ => Ok(false),
         },
-        Value::Object(_) => Err(JQError::EquationError(
-            "Object cannot be less than or equal to Object".to_string(),
-        )),
+        Value::Object(_) => Ok(false),
     }
 }
 
 fn fn_lte(left: &Value, right: &Value) -> Result<bool, JQError> {
     match left {
-        Value::Null => Err(JQError::EquationError(
-            "Null cannot be less than or equal to Null".to_string(),
-        )),
-        Value::Bool(_) => Err(JQError::EquationError(
-            "Boolean cannot be less than or equal to Boolean".to_string(),
-        )),
-        Value::Number(b) => match right {
-            Value::Number(bb) => Ok(b.as_f64().unwrap() <= bb.as_f64().unwrap()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate number and non-number".to_string(),
-            )),
+        Value::Null => Ok(true),
+        Value::Bool(b) => match right {
+            Value::Bool(bb) => Ok(*b <= *bb),
+            _ => Ok(true),
+        },
+        Value::Number(n) => match right {
+            Value::Number(nn) => Ok(n.as_f64().unwrap() <= nn.as_f64().unwrap()),
+            _ => Ok(true),
         },
         Value::String(b) => match right {
             Value::String(bb) => Ok(b <= bb),
-            _ => Err(JQError::EquationError(
-                "Cannot equate String and non-String".to_string(),
-            )),
+            _ => Ok(true),
         },
         Value::Array(b) => match right {
             Value::Array(bb) => Ok(b.len() <= bb.len()),
-            _ => Err(JQError::EquationError(
-                "Cannot equate Array and non-Array".to_string(),
-            )),
+            _ => Ok(true),
         },
-        Value::Object(_) => Err(JQError::EquationError(
-            "Object cannot be less than or equal to Object".to_string(),
-        )),
+        Value::Object(_) => Ok(true),
     }
 }
 
@@ -217,5 +167,93 @@ pub fn equality_value(op: &Operator, left: &Value, right: &Value) -> Result<Valu
         _ => Err(JQError::EquationError(
             "Wrong operator for equality".to_string(),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Operator;
+    use serde_json::json;
+
+    #[test]
+    fn test_equal() {
+        assert_eq!(
+            equality_value(&Operator::Equal, &json!(null), &json!(null)).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::Equal, &json!(true), &json!(true)).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::Equal, &json!(1), &json!(1)).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::Equal, &json!(r#"abc""#), &json!(r#"abc""#)).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::Equal, &json!([1, 2, 3]), &json!([1, 2, 3])).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(
+                &Operator::Equal,
+                &json!({"a":1, "b":2, "c":3}),
+                &json!({"a":1, "b":2, "c":3})
+            )
+            .expect("failed"),
+            json!(true)
+        );
+    }
+
+    #[test]
+    fn test_not_equal() {
+        assert_eq!(
+            equality_value(&Operator::NotEqual, &json!(null), &json!(null)).expect("failed"),
+            json!(false)
+        );
+        assert_eq!(
+            equality_value(&Operator::NotEqual, &json!(null), &json!(true)).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::NotEqual, &json!(true), &json!(false)).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::NotEqual, &json!(1), &json!(0)).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::NotEqual, &json!(r#"abc""#), &json!(r#"ab""#))
+                .expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(&Operator::NotEqual, &json!([1, 2, 3]), &json!([1, 2])).expect("failed"),
+            json!(true)
+        );
+
+        assert_eq!(
+            equality_value(
+                &Operator::NotEqual,
+                &json!({"a":1, "b":2, "c":3}),
+                &json!({"a":1, "b":2})
+            )
+            .expect("failed"),
+            json!(true)
+        );
     }
 }

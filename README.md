@@ -257,6 +257,19 @@ let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!("JSON"), json!("XML")]);
 ```
 
+## Parenthesis
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"1"#.as_bytes();
+let query_str = r#"(. + 2) * 5"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(15.0)]);
+```
+
 ## Types and Values
 jq supports the same set of datatypes as JSON - numbers, strings, booleans, arrays, objects (which in JSON-speak are hashes with only string keys), and "null".
 
@@ -361,4 +374,20 @@ let query_str = r#".[] | has(2)"#;
 
 let result = jq(json, query_str).expect("Failed JQ");
 assert_eq!(&result, &[json!(false), json!(true)]);
+```
+
+# Conditionals and Comparisons
+
+## `==`, `!=`
+
+```rust
+use r_jq::jq;
+use serde_json::json;
+
+let json = r#"[1, 1.0, "1", "banana"]"#.as_bytes();
+let query_str = r#".[] == 1"#;
+
+let result = jq(json, query_str).expect("Failed JQ");
+assert_eq!(&result, &[json!(true), json!(true), json!(false), json!(false)]);
+
 ```

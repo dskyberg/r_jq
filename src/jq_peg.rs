@@ -16,9 +16,6 @@ peg::parser!( grammar query_parser() for str {
     pub rule number_list() -> Vec<f64> =  number() ++  ","
 
 
-    pub rule operator() -> Operator
-        = s:$( ">=" / "<=" / "+" / "-" / "*" / "/" / "<" / ">" / "!=" / "==") {Operator::try_from(s).expect("failed")}
-
     rule sum_ops() -> Operator = s:$("+" / "-"/ "<" / ">" / "!=" / "==" / ">=" / "<=" )  {Operator::try_from(s).expect("failed")}
     rule mult_ops() -> Operator = s:$("*" / "/") {Operator::try_from(s).expect("failed")}
 
@@ -110,7 +107,7 @@ peg::parser!( grammar query_parser() for str {
         }
 
     pub rule select()
-        = _ "select(" _ s1:string() _ o:operator() _  s2:string() _ ")" _
+        = _ "select(" _ e:expression() _ ")" _
 
     pub rule recurse() -> Action<'input>
         = precedence!{
@@ -165,8 +162,20 @@ mod tests {
 
     #[test]
     fn test_expresion() {
-        let result = parse(r#"(.a + 2)"#);
-        dbg!(&result);
+        let result = query_parser::expression(r#"(.a + 2) * 3"#).expect("failed");
+        //dbg!(&result);
+        assert_eq!(
+            result,
+            ExpressionType::Op(
+                Operator::Multiply,
+                Box::new(ExpressionType::Op(
+                    Operator::Plus,
+                    Box::new(ExpressionType::Ident(Token::Ident("a", false))),
+                    Box::new(ExpressionType::Number(2.0))
+                )),
+                Box::new(ExpressionType::Number(3.0))
+            )
+        );
     }
 
     #[test]
@@ -292,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_select() {
-        let result = query_parser::select(r#"select("a" != "a")"#);
+        let result = query_parser::select(r#"select(.a != "a")"#);
         dbg!(&result);
     }
 
@@ -519,15 +528,6 @@ mod tests {
         assert_eq!(query_parser::string(r#""abc""#), Ok("abc"));
         assert_eq!(query_parser::string(r#""a 1_bc""#), Ok("a 1_bc"));
         assert_eq!(query_parser::string(r#"" a 1_bc ""#), Ok(" a 1_bc "));
-    }
-
-    #[test]
-    fn test_operators() {
-        assert_eq!(query_parser::operator("+"), Ok(Operator::Plus));
-        assert_eq!(query_parser::operator("=="), Ok(Operator::Equal));
-        assert_eq!(query_parser::operator("!="), Ok(Operator::NotEqual));
-        assert_eq!(query_parser::operator(">="), Ok(Operator::Gte));
-        assert_eq!(query_parser::operator("<="), Ok(Operator::Lte));
     }
 
     #[test]

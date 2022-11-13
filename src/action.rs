@@ -10,15 +10,23 @@ pub type Filter<'a> = Vec<Token<'a>>;
 /// An action is the fundamental component of a [Block](crate::Block)
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action<'a> {
+    /// [ExpressionType]
+    Expression(ExpressionType<'a>),
     /// [Function]
     Function(Function<'a>),
     /// [Filter]
     Filter(Filter<'a>),
-    ///
-    Expression(ExpressionType<'a>),
 }
 
 impl<'a> Action<'a> {
+    /// Return the inner [Function], or error
+    pub fn as_expression(&self) -> Result<&ExpressionType, JQError> {
+        match self {
+            Action::Expression(expr) => Ok(expr),
+            _ => Err(JQError::ActionMismatch("Expression".to_string())),
+        }
+    }
+
     /// Return the inner [Function], or error
     pub fn as_function(&self) -> Result<&Function, JQError> {
         match self {
@@ -33,6 +41,11 @@ impl<'a> Action<'a> {
             Action::Filter(filter) => Ok(filter),
             _ => Err(JQError::ActionMismatch("Filter".to_string())),
         }
+    }
+
+    /// True if the [Action] is a [Function]
+    pub fn is_expression(&self) -> bool {
+        matches!(self, Action::Expression(_))
     }
 
     /// True if the [Action] is a [Function]
